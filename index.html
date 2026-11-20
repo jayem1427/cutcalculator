@@ -284,6 +284,7 @@ sub{ font-size:.72em; }
         </div>
         <div class="optrow">
           <button id="opt" class="btn primary big" type="button">Optimize</button>
+          <button id="fread" class="btn" type="button" hidden>Read selected operation</button>
           <span class="ostat" id="ostat" aria-live="polite">Max spindle speed comes from “Your machine”. Lock a<sub>e</sub> or a<sub>p</sub> above to keep it fixed.</span>
         </div>
       </section>
@@ -825,7 +826,10 @@ function renderLimitList(selected){
 function persistLimits(){
   const items = JSON.parse(JSON.stringify(limitProfiles));
   lwriting = lwriting.then(async () => {
-    if(lstore.kind === "db"){
+    if(lstore.kind === "fusion"){
+      try{ const r = JSON.parse(await fusionSend("saveLimits", { items }) || "{}"); setLstat(r.ok ? "Saved in Fusion" : "Couldn’t save: " + (r.reason || "unknown error")); }
+      catch(e){ setLstat("Couldn’t save in Fusion"); }
+    } else if(lstore.kind === "db"){
       try{ await lstore.ref.set({ items, updatedAt: Date.now() }); setLstat("Saved to your account"); }
       catch(e){ setLstat(e && e.code === "quota_exceeded" ? "Couldn’t save: storage is full" : "Couldn’t save. Try again."); }
     } else {
@@ -836,6 +840,12 @@ function persistLimits(){
   return lwriting;
 }
 async function initLimitStore(){
+  if(FUSION){                       // the palette's localStorage may not persist; Python keeps a JSON file
+    lstore = { kind:"fusion" };
+    try{ const items = JSON.parse(await fusionSend("getLimits", {}) || "{}"); limitProfiles = items && typeof items === "object" ? items : {}; }
+    catch(e){ limitProfiles = {}; setLstat("Couldn’t read saved profiles from Fusion"); }
+    renderLimitList(); return;
+  }
   limitProfiles = readLocalLimits(); renderLimitList();
   let db = null, uid = null;
   try{
@@ -1109,6 +1119,9 @@ function init(){
     const [kc1, mc] = MATERIALS[sel.value];
     if(sel.value !== "Custom"){ $("kc1").value = kc1; $("mc").value = mc; }
     render(); save();
+    if(FUSION && fusionOp) fusionSend("setMaterial", { material: sel.value }).then(r => {
+      try{ const o = JSON.parse(r || "{}"); if(o.ok) setOstat(`Material saved on setup “${o.setup}”.`, "good"); }catch(e){}
+    }, () => {});
   });
   FIELDS.forEach(f => {
     const e = $(f); if(e.type === "hidden") return;
@@ -1136,8 +1149,63 @@ function init(){
 
   render();
   useLocalStore(); wirePresets(); initPresetStore();
+  FUSION = hasFusion();
   wireLimits(); initLimitStore();
+  if(FUSION) initFusion();
+  else setTimeout(() => { if(!FUSION && hasFusion()){ FUSION = true; initLimitStore(); initFusion(); } }, 800);
 }
+
+/* ---------- Fusion add-in bridge (inactive in a normal browser) ---------- */
+let FUSION = false;
+const hasFusion = () => !!(window.adsk && typeof window.adsk.fusionSendData === "function");
+let fusionOp = null;
+function fusionSend(action, obj){
+  // Newer Fusion returns a Promise of the handler's returnData; older returns it directly.
+  try{ return Promise.resolve(window.adsk.fusionSendData(action, JSON.stringify(obj || {}))); }
+  catch(e){ return Promise.reject(e); }
+}
+function loadFromFusion(d){
+  if(!d || !d.ok){ fusionOp = null; setOstat(d && d.reason ? d.reason : "Couldn’t read the operation.", "err"); return; }
+  if(!metric) setUnits(true);                      // Python sends mm, rpm, mm/min
+  const t = d.tool || {}, o = d.op || {};
+  const put = (id, v) => { if(isFinite(v) && v > 0) $(id).value = sig(v); };
+  put("D", t.D); put("so", t.stickout); put("helix", t.helix);
+  if(isFinite(t.z) && t.z >= 1){ $("z").value = Math.round(t.z); markTeeth(); }
+  put("ae", o.ae); put("ap", o.ap);
+  if(o.n > 0) put("vc", Math.PI*t.D*o.n/1000);
+  else if(o.vc > 0) put("vc", o.vc);
+  if(o.fz > 0) put("fz", o.fz);
+  if(t.fluteLen > 0) $("apmax").value = sig(t.fluteLen);
+  fusionOp = d;
+  let msg = `Loaded “${d.operation}” (${d.strategy}).`;
+  if(d.material && MATERIALS[d.material]){
+    $("mat").value = d.material; $("kc1").value = MATERIALS[d.material][0]; $("mc").value = MATERIALS[d.material][1];
+  } else msg += ` Pick this setup’s material below; it’s saved with setup “${d.setup || ""}”.`;
+  if(d.missing && d.missing.length) msg += ` Couldn’t read: ${d.missing.join(", ")}; check those fields.`;
+  if(!(t.helix > 0)) msg += " The tool has no helix angle; enter it for the force-slope limit.";
+  syncSliders(); render(); save();
+  setOstat(msg, d.missing && d.missing.length ? "err" : "good");
+}
+function readFusionSelection(){
+  setOstat("Reading the selected operation…");
+  fusionSend("readSelection", {}).then(r => { try{ loadFromFusion(JSON.parse(r)); }catch(e){ setOstat("Fusion sent something unexpected.", "err"); } },
+    () => setOstat("Couldn’t reach Fusion.", "err"));
+}
+function initFusion(){
+  document.documentElement.classList.add("fusion");
+  $("fread").hidden = false;
+  $("fread").addEventListener("click", readFusionSelection);
+  readFusionSelection();
+}
+window.fusionJavaScriptHandler = {
+  handle(action, data){
+    try{
+      if(action === "loadCut") loadFromFusion(JSON.parse(data));
+      else if(action === "fusionStatus") setOstat(JSON.parse(data).message || "", "err");
+    }catch(e){ console.error("fusionJavaScriptHandler", action, e); }
+    return "OK";
+  }
+};
 document.addEventListener("DOMContentLoaded", init);
 </script>
 </body>
