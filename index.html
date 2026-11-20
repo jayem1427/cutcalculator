@@ -14,6 +14,7 @@
   --stock:#B7BEC6; --stock-cut:#DCE1E5; --cutter:#3A434D; --cutter-hi:#8E99A4;
   --straw:#C99A2E; --bronze:#A8622A; --purple:#6C3F8F; --blue:#2F5DA8;
   --warn-bg:#FBF1DC; --warn-ink:#6B4A0E;
+  --seq-lo:#D9DEF2; --seq-hi:#2B3A8F; --fail:#C4C9CF;
   --sans:"Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
   --num:"Barlow Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
@@ -25,6 +26,7 @@
     --stock:#4B545E; --stock-cut:#6B7580; --cutter:#C9D1D8; --cutter-hi:#6D7782;
     --straw:#D9B04A; --bronze:#C77B3E; --purple:#A57BC9; --blue:#6E95DA;
     --warn-bg:#3A2F1A; --warn-ink:#F0D49A;
+    --seq-lo:#283052; --seq-hi:#B4C0FF; --fail:#3A4049;
     color-scheme: dark;
   }
 }
@@ -34,6 +36,7 @@
   --stock:#4B545E; --stock-cut:#6B7580; --cutter:#C9D1D8; --cutter-hi:#6D7782;
   --straw:#D9B04A; --bronze:#C77B3E; --purple:#A57BC9; --blue:#6E95DA;
   --warn-bg:#3A2F1A; --warn-ink:#F0D49A;
+  --seq-lo:#283052; --seq-hi:#B4C0FF; --fail:#3A4049;
   color-scheme: dark;
 }
 :root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
@@ -118,6 +121,27 @@ canvas{ width:100%; height:150px; display:block; border-radius:6px; background:v
 .btn.danger{ border-color:var(--bronze); color:var(--bronze); }
 .btn:disabled{ opacity:.45; cursor:default; }
 .pstat{ font-size:13px; color:var(--muted); margin-left:auto; }
+.lock{ display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); margin-left:8px; font-weight:400; cursor:pointer; }
+.lock input{ accent-color:var(--dykem); width:14px; height:14px; }
+.lprof{ display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; margin-bottom:14px; }
+.lprof select, .lprof input{ font:500 14px var(--sans); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:5px 8px; min-width:0; flex:1 1 130px; }
+.check{ display:flex; gap:8px; align-items:center; font-size:14px; cursor:pointer; }
+.check input{ accent-color:var(--dykem); width:16px; height:16px; }
+.optrow{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:16px; }
+.btn.big{ font-size:16px; font-weight:600; padding:9px 22px; }
+.ostat{ font-size:14px; color:var(--muted); }
+.ostat.err{ color:var(--warn-ink); background:var(--warn-bg); padding:9px 12px; border-radius:8px; flex-basis:100%; }
+.ostat.good{ color:var(--ink); flex-basis:100%; }
+canvas#map{ height:300px; cursor:crosshair; }
+canvas#graph{ cursor:crosshair; }
+.mapleg{ display:flex; gap:6px 16px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted); margin-top:8px; }
+.mapleg i{ display:inline-block; width:12px; height:10px; border-radius:2px; vertical-align:-1px; margin-right:5px; }
+.mapleg .grad{ width:72px; background:linear-gradient(90deg,var(--seq-lo),var(--seq-hi)); }
+.mapleg .fail{ background:repeating-linear-gradient(45deg,var(--fail) 0 2px,var(--surface) 2px 4px); border:1px solid var(--fail); }
+.mapleg .dash{ width:18px; height:0; border-top:2px dashed var(--muted); border-radius:0; vertical-align:3px; }
+.mapleg .ring{ width:10px; height:10px; border-radius:50%; border:2px solid var(--ink); }
+.hint{ font-size:13px; color:var(--muted); margin-top:6px; }
+.tip{ position:fixed; pointer-events:none; background:var(--ink); color:var(--bg); font:500 12px/1.4 var(--sans); padding:6px 9px; border-radius:6px; z-index:20; display:none; font-variant-numeric:tabular-nums; max-width:260px; }
 footer{ color:var(--muted); font-size:13px; margin-top:26px; max-width:80ch; }
 footer p + p{ margin-top:6px; }
 sub{ font-size:.72em; }
@@ -186,12 +210,12 @@ sub{ font-size:.72em; }
         <p class="sub">Drag or type. Everything updates as you go.</p>
 
         <div class="slide">
-          <div class="top"><label for="ae">Stepover (a<sub>e</sub>)</label>
+          <div class="top"><span><label for="ae">Stepover (a<sub>e</sub>)</label><label class="lock" title="Keep this stepover when optimizing"><input type="checkbox" id="lockAe">Lock</label></span>
             <div class="numbox"><input id="ae" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
           <input type="range" id="ae_r" aria-label="Stepover slider">
         </div>
         <div class="slide">
-          <div class="top"><label for="ap">Depth of cut (a<sub>p</sub>)</label>
+          <div class="top"><span><label for="ap">Depth of cut (a<sub>p</sub>)</label><label class="lock" title="Keep this depth when optimizing"><input type="checkbox" id="lockAp">Lock</label></span>
             <div class="numbox"><input id="ap" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
           <input type="range" id="ap_r" aria-label="Depth of cut slider">
         </div>
@@ -236,6 +260,33 @@ sub{ font-size:.72em; }
           <div class="f"><label for="eta">Spindle efficiency η</label><div class="numbox"><input id="eta" type="number" step="0.05" min="0.1" max="1"></div></div>
         </div>
       </section>
+
+      <section class="panel" aria-labelledby="h-lim">
+        <h2 id="h-lim">Limits and optimize</h2>
+        <p class="sub">Optimize picks stepover, depth, feed and speed for the highest removal rate that stays inside these limits. Leave a field blank to ignore it.</p>
+        <div class="lprof">
+          <select id="lsel" aria-label="Limit profile"></select>
+          <input id="lname" type="text" maxlength="60" placeholder="Profile name" aria-label="Limit profile name">
+          <button id="lsave" class="btn" type="button">Save</button>
+          <button id="ldel" class="btn" type="button">Delete</button>
+          <span id="lstat" class="pstat" aria-live="polite"></span>
+        </div>
+        <div class="fields">
+          <div class="f"><label for="Fmax">Max cutting force (peak)</label><div class="numbox"><input id="Fmax" type="number" step="any" inputmode="decimal"><span data-u="force">lbf</span></div></div>
+          <div class="f"><label for="slopeMax">Max force slope</label><div class="numbox"><input id="slopeMax" type="number" step="any" inputmode="decimal"><span data-u="slope">lbf/°</span></div></div>
+          <div class="f"><label for="vfmax">Max feed rate</label><div class="numbox"><input id="vfmax" type="number" step="any" inputmode="decimal"><span data-u="feed">in/min</span></div></div>
+          <div class="f"><label for="apmax">Max depth (flute length)</label><div class="numbox"><input id="apmax" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
+          <div class="f"><label for="hexMax">Max chip thickness</label><div class="numbox"><input id="hexMax" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
+          <div class="f"><label for="hmMin">Min chip thickness</label><div class="numbox"><input id="hmMin" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
+          <div class="f"><label for="vcMin">Min cutting speed</label><div class="numbox"><input id="vcMin" type="number" step="any" inputmode="decimal"><span data-u="vc">ft/min</span></div></div>
+          <div class="f"><label for="vcMax">Max cutting speed</label><div class="numbox"><input id="vcMax" type="number" step="any" inputmode="decimal"><span data-u="vc">ft/min</span></div></div>
+          <label class="check f wide"><input type="checkbox" id="usePow">Also limit spindle power (uses “Your machine”)</label>
+        </div>
+        <div class="optrow">
+          <button id="opt" class="btn primary big" type="button">Optimize</button>
+          <span class="ostat" id="ostat" aria-live="polite">Max spindle speed comes from “Your machine”. Lock a<sub>e</sub> or a<sub>p</sub> above to keep it fixed.</span>
+        </div>
+      </section>
     </div>
 
     <div class="stack">
@@ -266,13 +317,30 @@ sub{ font-size:.72em; }
           <div class="r"><div class="l">Avg chip thickness h<sub>m</sub></div><div class="v"><span id="o_hm">–</span><small data-u="len">in</small></div></div>
           <div class="r"><div class="l">Specific force k<sub>c</sub></div><div class="v"><span id="o_kc">–</span><small>N/mm²</small></div></div>
           <div class="r"><div class="l">Tool deflection</div><div class="v"><span id="o_def">–</span><small data-u="len">in</small></div></div>
+          <div class="r"><div class="l">Peak force</div><div class="v"><span id="o_fpk">–</span><small data-u="force">lbf</small></div></div>
+          <div class="r"><div class="l">Max force slope</div><div class="v"><span id="o_slope">–</span><small data-u="slope">lbf/°</small></div></div>
+          <div class="r"><div class="l">Force slope in time</div><div class="v"><span id="o_slopems">–</span><small data-u="slopems">lbf/ms</small></div></div>
+          <div class="r"><div class="l">Force ripple</div><div class="v"><span id="o_ripple">–</span><small>of mean</small></div></div>
         </div>
       </section>
 
       <section class="panel" aria-labelledby="h-force">
         <h2 id="h-force">Force through one revolution</h2>
-        <p class="sub">Peak <span id="o_peak">–</span> <span data-u="force">lbf</span>. Smoother curves mean less chatter-prone cuts.</p>
+        <p class="sub">Peak <span id="o_peak">–</span> <span data-u="force">lbf</span>. Smoother curves mean less chatter-prone cuts. The dashed line is your force limit; the dot marks the steepest rise.</p>
         <canvas id="graph" aria-label="Instantaneous cutting force over one spindle revolution"></canvas>
+      </section>
+
+      <section class="panel" aria-labelledby="h-map">
+        <h2 id="h-map">Stepover × depth map</h2>
+        <p class="sub">Best removal rate at each stepover and depth, from the last Optimize. Click a cell to use it.</p>
+        <canvas id="map" aria-label="Heatmap of removal rate over stepover and depth of cut"></canvas>
+        <div class="mapleg" aria-hidden="true">
+          <span><i class="grad"></i>Removal rate, low → high</span>
+          <span><i class="fail"></i>No feasible feed</span>
+          <span><i class="dash"></i>Flute pitch (smooth below)</span>
+          <span><i class="ring"></i>Optimum</span>
+        </div>
+        <p class="hint" id="mapnote"></p>
       </section>
     </div>
   </div>
@@ -280,10 +348,13 @@ sub{ font-size:.72em; }
   <footer>
     <p>Spindle speed, feed, removal rate, k<sub>c</sub>, power and torque follow Sandvik Coromant’s milling formulas. Average chip thickness uses the exact side-milling form, which matches Sandvik’s approximation at light stepovers. Deflection (cantilever with an equivalent diameter of 0.8 × D) and the force curve are estimates.</p>
     <p>Wrought aluminium k<sub>c1</sub> is calibrated to Sandvik CoroPlus ToolGuide (6061, 88 HB: 6 mm 4-flute, a<sub>e</sub> 1.67, a<sub>p</sub> 15, 24,000 rpm → 1.82 kW). Cast aluminium is scaled by the same factor. Other materials use reference values that have not been checked against Sandvik.</p>
+    <p>The force curve is the exact integral of the tangential chip load along a helical flute. Force slope is the steepest rise in force per degree of rotation; it doesn’t depend on rpm. Near a whole multiple of the flute pitch, slope is taken as the worst within ±0.05 mm of depth, because the cancellation there only works just below the pitch. The optimizer uses nominal engagement, and adaptive toolpaths go above it in corners, so leave margin on the force limit. Forces are tangential only; the resultant is typically 1.1–1.3× higher.</p>
     <p>Planning values only. Verify against your tooling and setup.</p>
   </footer>
 </div>
+<div class="tip" id="tip" role="tooltip"></div>
 
+<script src="optimizer.js"></script>
 <script>
 const MATERIALS = {
   "Aluminium (wrought)":[295,0.25], "Aluminium (cast)":[345,0.25], "Brass / bronze":[550,0.25],
@@ -302,8 +373,17 @@ const LABELS = {
   imp:{len:"in",fz:"in/tooth",vc:"ft/min",feed:"in/min",mrr:"in³/min",pow:"HP",force:"lbf",tq:"in·lbf"},
   met:{len:"mm",fz:"mm/tooth",vc:"m/min",feed:"mm/min",mrr:"cm³/min",pow:"kW",force:"N",tq:"N·m"}
 };
-const CONVERT = { D:"len", so:"len", ae:"len", ap:"len", fz:"fz", vc:"vc", pmax:"pow" };
+Object.assign(C, { force:4.44822, slope:4.44822, feed:25.4 });
+Object.assign(OUT, { slope:0.224809, slopems:0.224809 });
+Object.assign(LABELS.imp, { slope:"lbf/°", slopems:"lbf/ms" });
+Object.assign(LABELS.met, { slope:"N/°", slopems:"N/ms" });
+const LCONV = { Fmax:"force", slopeMax:"slope", vfmax:"feed", apmax:"len", hexMax:"len", hmMin:"len", vcMin:"vc", vcMax:"vc" };
+const LFIELDS = Object.keys(LCONV);
+const LIMIT_DEFAULTS = { Fmax:30, slopeMax:2.5, hmMin:0.005 };       // metric; the quick path is force + slope
+const CONVERT = Object.assign({ D:"len", so:"len", ae:"len", ap:"len", fz:"fz", vc:"vc", pmax:"pow" }, LCONV);
 const FIELDS = ["kc1","mc","D","z","helix","rake","kappa","so","E","eta","ae","ap","fz","vc","pmax","nmax"];
+const CHECKS = ["lockAe","lockAp","usePow"];
+const FORCE_STEP = 0.1;                                                 // degrees per force-curve sample
 const $ = id => document.getElementById(id);
 let metric = false;
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -316,6 +396,8 @@ function save(){
   try{
     const s = { metric, mat:$("mat").value };
     FIELDS.forEach(f => s[f] = $(f).value);
+    LFIELDS.forEach(f => s[f] = $(f).value);
+    CHECKS.forEach(f => s[f] = $(f).checked);
     localStorage.setItem(KEY, JSON.stringify(s));
   }catch(e){}
 }
@@ -364,6 +446,17 @@ function inputs(){
     z:Math.max(1,Math.round(num("z"))), helix:num("helix"), rake:num("rake"), kappa:num("kappa"),
     E:num("E"), eta:num("eta"), kc1:num("kc1"), mc:num("mc"), nmax:num("nmax") };
 }
+/* limits, always handled in metric */
+function limitsMetric(){
+  const o = {};
+  LFIELDS.forEach(f => { const v = num(f); o[f] = isFinite(v) && v > 0 ? (metric ? v : v*C[LCONV[f]]) : undefined; });
+  return o;
+}
+function setLimitsMetric(o){
+  LFIELDS.forEach(f => { const v = o ? o[f] : undefined; $(f).value = isFinite(v) && v > 0 ? sig(metric ? v : v/C[LCONV[f]]) : ""; });
+}
+function toolOf(p){ return { D:p.D, z:p.z, helix:p.helix, kc1:p.kc1, mc:p.mc, rake:p.rake, kappa:p.kappa }; }
+
 function compute(p){
   const rad = d => d*Math.PI/180;
   const n  = 1000*p.vc/(Math.PI*p.D);
@@ -380,28 +473,13 @@ function compute(p){
   const Fc = Pc*1000*60/p.vc;
   const Ieq = Math.PI*Math.pow(0.8*p.D,4)/64;
   const def = Fc*Math.pow(p.so,3)/(3*p.E*1000*Ieq);
-  const {forces, Fpeak} = instForce(p, kc);
-  return { n, vf, Q, hm, kc, Pc, Pmot, Mc, Fc, def, forces, Fpeak, phi, aeR };
-}
-function instForce(p, kc){
-  const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
-  const R=p.D/2, step=2, dz=Math.max(p.ap/60, 1e-4);
-  const engAng = deg(Math.acos(Math.max(-1, 1 - p.ae/R)));
-  const startEng = 180 - engAng;
-  const forces=[]; let Fpk=0;
-  for(let a=0;a<360;a+=step){
-    let area=0;
-    for(let t=0;t<p.z;t++){
-      const t0 = a + 360*(t/p.z);
-      for(let z=p.ap; z>=0; z-=dz){
-        let ta = t0 + deg(-z*Math.tan(rad(p.helix))/R);
-        ta -= 360*Math.floor(ta/360);
-        if(ta>startEng && ta<180) area += p.fz*Math.sin(rad(ta))*dz;
-      }
-    }
-    const F = kc*area; Fpk = Math.max(Fpk,F); forces.push(F);
-  }
-  return { forces, Fpeak:Fpk };
+  // exact force curve (optimizer.js); slope is robust to sitting exactly on a flute pitch
+  const forces = CutOpt.forceCurve(p.D, p.z, p.helix, p.ae, p.ap, p.fz, kc, FORCE_STEP);
+  const st = CutOpt.forceStats(forces, FORCE_STEP);
+  const straight = !(p.helix >= CutOpt.STRAIGHT_FLUTE_DEG);
+  const slope = straight ? Infinity : CutOpt.robustSlope(toolOf(p), p.ae, p.ap, p.fz, kc, FORCE_STEP, st.maxSlope);
+  const hex = p.fz*CutOpt.hexPerFz(p.D, p.ae, p.kappa);
+  return { n, vf, Q, hm, hex, kc, Pc, Pmot, Mc, Fc, def, forces, Fpeak:st.peak, ripple:st.ripple, slope, slopeAt:st.slopeAt, straight, phi, aeR };
 }
 
 /* ---------- formatting ---------- */
@@ -519,27 +597,288 @@ function drawViz(p, r){
 }
 
 /* ---------- force graph ---------- */
-let lastForces = [], lastPeak = 0;
-function drawGraph(forces, Fpk){
-  lastForces = forces; lastPeak = Fpk;
-  const cv = $("graph"), dpr = window.devicePixelRatio || 1;
+const tok = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+function canvasCtx(cv){
+  const dpr = window.devicePixelRatio || 1;
   const W = cv.clientWidth || 360, H = cv.clientHeight || 150;
-  cv.width = W*dpr; cv.height = H*dpr;
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
-  const cs = getComputedStyle(document.documentElement);
-  const line = cs.getPropertyValue("--line").trim(), acc = cs.getPropertyValue("--dykem").trim(), soft = cs.getPropertyValue("--dykem-soft").trim();
   ctx.clearRect(0,0,W,H);
-  ctx.strokeStyle = line; ctx.lineWidth = 1;
+  return { ctx, W, H };
+}
+function showTip(e, html){
+  const t = $("tip"); t.innerHTML = html; t.style.display = "block";
+  const w = t.offsetWidth, h = t.offsetHeight;
+  let x = e.clientX + 14, y = e.clientY - h - 10;
+  if(x + w > window.innerWidth - 8) x = e.clientX - w - 14;
+  if(y < 8) y = e.clientY + 16;
+  t.style.left = Math.max(8, x) + "px"; t.style.top = y + "px";
+}
+function hideTip(){ $("tip").style.display = "none"; }
+
+/* ---------- force graph ---------- */
+let G = { forces:[], Fpk:0, Fmax:0, slopeAt:-1 };
+function drawGraph(forces, Fpk, Fmax, slopeAt){
+  G = { forces, Fpk, Fmax: Fmax || 0, slopeAt: slopeAt ?? -1 };
+  const { ctx, W, H } = canvasCtx($("graph"));
+  ctx.strokeStyle = tok("--line"); ctx.lineWidth = 1;
   for(let g=1; g<4; g++){ const x = W*g/4; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
   if(!(Fpk > 0)) return;
-  const n = forces.length, pad = 8;
-  const pt = i => [W*i/(n-1), H - pad - (forces[i]/Fpk)*(H - 2*pad)];
+  const n = forces.length, pad = 8, top = Math.max(Fpk, G.Fmax) * 1.06;
+  const X = i => W*i/n, Y = f => H - pad - (f/top)*(H - 2*pad);
   ctx.beginPath(); ctx.moveTo(0, H);
-  for(let i=0;i<n;i++){ const [x,y] = pt(i); ctx.lineTo(x,y); }
-  ctx.lineTo(W, H); ctx.closePath(); ctx.fillStyle = soft; ctx.fill();
+  for(let i=0;i<=n;i++) ctx.lineTo(X(i), Y(forces[i % n]));
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fillStyle = tok("--dykem-soft"); ctx.fill();
   ctx.beginPath();
-  for(let i=0;i<n;i++){ const [x,y] = pt(i); i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); }
-  ctx.strokeStyle = acc; ctx.lineWidth = 2; ctx.stroke();
+  for(let i=0;i<=n;i++){ const x = X(i), y = Y(forces[i % n]); i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); }
+  ctx.strokeStyle = tok("--dykem"); ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+  if(G.Fmax > 0){
+    const y = Y(G.Fmax), col = Fpk > G.Fmax ? tok("--blue") : tok("--bronze");
+    ctx.setLineDash([5,4]); ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = tok("--muted"); ctx.font = "500 11px " + tok("--sans"); ctx.textAlign = "right";
+    ctx.fillText("limit", W - 4, y > 16 ? y - 4 : y + 12);
+  }
+  if(G.slopeAt >= 0){
+    const i = Math.round(G.slopeAt / (360/n)) % n, x = X(i + 0.5), y = Y((forces[i] + forces[(i+1)%n])/2);
+    ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 2*Math.PI); ctx.fillStyle = tok("--surface"); ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = tok("--ink"); ctx.stroke();
+  }
+}
+function graphHover(e){
+  const n = G.forces.length; if(!n) return;
+  const rect = e.target.getBoundingClientRect();
+  const i = Math.min(n-1, Math.max(0, Math.round((e.clientX - rect.left)/rect.width*n)));
+  const m = metric ? 1 : OUT.force, L = metric ? LABELS.met : LABELS.imp;
+  showTip(e, `${fmt(i*360/n, 1)}° &nbsp;·&nbsp; <b>${fsig(G.forces[i]*m, 3)} ${L.force}</b>`);
+}
+
+/* ---------- stepover × depth map ---------- */
+let lastOpt = null, M = null;
+const hex2rgb = h => { h = h.replace("#",""); if(h.length === 3) h = h.split("").map(c => c+c).join(""); const v = parseInt(h,16); return [v>>16 & 255, v>>8 & 255, v & 255]; };
+function edgesOf(a, log){
+  if(a.length === 1) return log ? [a[0]/1.25, a[0]*1.25] : [a[0]*0.9, a[0]*1.1];
+  const mid = (u,v) => log ? Math.sqrt(u*v) : (u+v)/2, e = [];
+  for(let i=0;i<a.length-1;i++) e.push(mid(a[i], a[i+1]));
+  const first = log ? a[0]*a[0]/e[0] : 2*a[0]-e[0], last = log ? a[a.length-1]**2/e[e.length-1] : 2*a[a.length-1]-e[e.length-1];
+  return [first, ...e, last];
+}
+function niceTicks(lo, hi, count){
+  const span = hi - lo, raw = span / count, mag = 10**Math.floor(Math.log10(raw));
+  const step = [1,2,2.5,5,10].map(k => k*mag).find(s => s >= raw) || raw;
+  const out = []; for(let v = Math.ceil(lo/step)*step; v <= hi + 1e-9; v += step) out.push(+v.toPrecision(6));
+  return out;
+}
+function drawMap(){
+  const cv = $("map"), { ctx, W, H } = canvasCtx(cv);
+  const r = lastOpt, sans = tok("--sans");
+  M = null;
+  if(!r || !r.grid){
+    ctx.fillStyle = tok("--muted"); ctx.font = "500 14px " + sans; ctx.textAlign = "center";
+    ctx.fillText(r && r.reason ? "No map: see the message above" : "Press Optimize to map stepover × depth", W/2, H/2);
+    $("mapnote").textContent = "";
+    return;
+  }
+  const { ae, ap, cells } = r.grid, D = r.D;
+  const padL = 46, padR = 10, padT = 8, padB = 36, pw = W - padL - padR, ph = H - padT - padB;
+  const xe = edgesOf(ae, true), ye = edgesOf(ap, false);
+  const lx0 = Math.log(xe[0]), lx1 = Math.log(xe[xe.length-1]), y0 = Math.max(0, ye[0]), y1 = ye[ye.length-1];
+  const X = v => padL + (Math.log(v) - lx0)/(lx1 - lx0)*pw;
+  const Y = v => padT + ph - (v - y0)/(y1 - y0)*ph;
+  let Qmax = 0; cells.forEach(row => row.forEach(c => { if(c.feasible) Qmax = Math.max(Qmax, c.Q); }));
+  const lo = hex2rgb(tok("--seq-lo")), hi = hex2rgb(tok("--seq-hi")), surf = tok("--surface");
+  const mix = t => `rgb(${lo.map((v,k) => Math.round(v + (hi[k]-v)*t)).join(",")})`;
+  const fails = {};
+  cells.forEach((row, i) => row.forEach((c, j) => {
+    const x0 = X(xe[i]), x1 = X(xe[i+1]), ya = Y(Math.max(y0, ye[j+1])), yb = Y(Math.max(y0, ye[j]));
+    if(c.feasible){ ctx.fillStyle = mix(Qmax > 0 ? Math.pow(c.Q/Qmax, 0.8) : 0); ctx.fillRect(x0, ya, x1 - x0 + 0.5, yb - ya + 0.5); }
+    else {
+      ctx.fillStyle = surf; ctx.fillRect(x0, ya, x1 - x0 + 0.5, yb - ya + 0.5);
+      const f = fails[c.bind] || (fails[c.bind] = { n:0, x:0, y:0, rects:[] });
+      f.n++; f.x += (x0+x1)/2; f.y += (ya+yb)/2; f.rects.push([x0, ya, x1 - x0 + 0.5, yb - ya + 0.5]);
+    }
+  }));
+  // hatch the infeasible cells
+  ctx.save(); ctx.beginPath();
+  Object.values(fails).forEach(f => f.rects.forEach(rc => ctx.rect(...rc)));
+  ctx.clip(); ctx.strokeStyle = tok("--fail"); ctx.lineWidth = 2;
+  for(let k = -H; k < W; k += 7){ ctx.beginPath(); ctx.moveTo(k, H); ctx.lineTo(k + H, 0); ctx.stroke(); }
+  ctx.restore();
+  // label each infeasible region by the limit that fails there
+  ctx.font = "600 12px " + sans; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  Object.entries(fails).forEach(([b, f]) => {
+    if(f.n < 4) return;
+    const txt = (CutOpt.LIMIT_LABEL[b] || b) + " limit", x = f.x/f.n, y = f.y/f.n, w = ctx.measureText(txt).width + 12;
+    ctx.fillStyle = surf; ctx.fillRect(x - w/2, y - 10, w, 20);
+    ctx.fillStyle = tok("--ink"); ctx.fillText(txt, x, y);
+  });
+  // smooth stepdowns
+  ctx.setLineDash([5,4]); ctx.lineWidth = 1.5; ctx.strokeStyle = tok("--muted");
+  ctx.font = "500 11px " + sans; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+  (r.smoothDepths || []).forEach((d, k) => {
+    if(d < y0 || d > y1) return;
+    const y = Y(d); ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + pw, y); ctx.stroke();
+    ctx.fillStyle = tok("--muted"); ctx.fillText(`${k+1}× pitch`, padL + pw - 4, y - 2);
+  });
+  ctx.setLineDash([]);
+  // axes
+  ctx.fillStyle = tok("--muted"); ctx.strokeStyle = tok("--line"); ctx.lineWidth = 1; ctx.font = "500 11px " + sans;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  [0.02, 0.05, 0.1, 0.2, 0.5, 1].forEach(fr => { const v = fr*D; if(v < xe[0] || v > xe[xe.length-1]) return;
+    const x = X(v); ctx.beginPath(); ctx.moveTo(x, padT + ph); ctx.lineTo(x, padT + ph + 4); ctx.stroke(); ctx.fillText(fmt(fr*100,0) + "%", x, padT + ph + 6); });
+  ctx.fillText("Stepover aₑ, % of diameter", padL + pw/2, padT + ph + 20);
+  const lenM = metric ? 1 : OUT.len;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  niceTicks(y0*lenM, y1*lenM, 4).forEach(v => { const y = Y(v/lenM); if(y < padT - 1 || y > padT + ph + 1) return;
+    ctx.beginPath(); ctx.moveTo(padL - 4, y); ctx.lineTo(padL, y); ctx.stroke(); ctx.fillText(fsig(v, 3), padL - 6, y); });
+  ctx.save(); ctx.translate(11, padT + ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign = "center";
+  ctx.fillText(`Depth aₚ (${(metric ? LABELS.met : LABELS.imp).len})`, 0, 0); ctx.restore();
+  // optimum and current point
+  const ring = (x, y, rad, col) => { ctx.beginPath(); ctx.arc(x, y, rad, 0, 2*Math.PI); ctx.lineWidth = 4; ctx.strokeStyle = surf; ctx.stroke(); ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.stroke(); };
+  if(r.best) ring(X(r.best.ae), Y(r.best.ap), 7, tok("--ink"));
+  const p = inputs();
+  if(isFinite(p.ae) && isFinite(p.ap) && p.ae >= xe[0] && p.ae <= xe[xe.length-1] && p.ap >= y0 && p.ap <= y1){
+    const x = X(p.ae), y = Y(p.ap); ctx.strokeStyle = tok("--ink"); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x-5,y); ctx.lineTo(x+5,y); ctx.moveTo(x,y-5); ctx.lineTo(x,y+5); ctx.stroke();
+  }
+  M = { xe, ye, y0, y1, ae, ap, cells, padL, padT, pw, ph, lx0, lx1, n: r.n, D };
+  const pit = r.pitch, L = metric ? LABELS.met : LABELS.imp;
+  $("mapnote").textContent = isFinite(pit)
+    ? `Flute pitch ${fsig(pit*lenM,3)} ${L.len}. Force is smoothest at depths just under a whole multiple of it; even slightly deeper brings back the full force slope.`
+    : "Straight flutes: no smooth depths.";
+}
+function mapCell(e){
+  if(!M) return null;
+  const rect = e.target.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
+  if(x < M.padL || x > M.padL + M.pw || y < M.padT || y > M.padT + M.ph) return null;
+  const v = Math.exp(M.lx0 + (x - M.padL)/M.pw*(M.lx1 - M.lx0)), d = M.y0 + (M.padT + M.ph - y)/M.ph*(M.y1 - M.y0);
+  let i = M.xe.findIndex((_, k) => k < M.xe.length-1 && v >= M.xe[k] && v < M.xe[k+1]);
+  let j = M.ye.findIndex((_, k) => k < M.ye.length-1 && d >= M.ye[k] && d < M.ye[k+1]);
+  if(i < 0) i = v < M.xe[0] ? 0 : M.ae.length-1; if(j < 0) j = d < M.ye[0] ? 0 : M.ap.length-1;
+  return M.cells[i][j];
+}
+function mapHover(e){
+  const c = mapCell(e); if(!c){ hideTip(); return; }
+  const L = metric ? LABELS.met : LABELS.imp, lm = metric ? 1 : OUT.len;
+  let h = `a<sub>e</sub> ${fsig(c.ae*lm,3)} ${L.len} (${fmt(c.ae/M.D*100,1)}%) &nbsp;·&nbsp; a<sub>p</sub> ${fsig(c.ap*lm,3)} ${L.len}<br>`;
+  h += c.feasible
+    ? `<b>Q ${fsig(c.Q*(metric?1:OUT.mrr),3)} ${L.mrr}</b> at f<sub>z</sub> ${fsig(c.fz*lm,3)}<br>Limited by ${CutOpt.LIMIT_LABEL[c.bind] || c.bind}`
+    : `<b>No feasible feed.</b> The ${CutOpt.LIMIT_LABEL[c.bind] || c.bind} limit pushes chips under the minimum.`;
+  showTip(e, h);
+}
+function mapClick(e){
+  const c = mapCell(e); if(!c || !c.feasible || !M) return;
+  applyCut({ ae:c.ae, ap:c.ap, fz:c.fz, n:M.n });
+  setOstat(`Using the clicked cell: Q ${fsig(c.Q*(metric?1:OUT.mrr),3)} ${(metric?LABELS.met:LABELS.imp).mrr}, limited by ${CutOpt.LIMIT_LABEL[c.bind] || c.bind}.`, "good");
+}
+
+/* ---------- optimize ---------- */
+function setOstat(t, cls){ const o = $("ostat"); o.textContent = t; o.className = "ostat" + (cls ? " " + cls : ""); }
+function applyCut({ ae, ap, fz, n }){
+  const p = inputs(), vc = Math.PI*p.D*n/1000;
+  const put = (id, v) => { $(id).value = sig(metric ? v : v/C[CONVERT[id]]); };
+  if(!$("lockAe").checked) put("ae", ae);
+  if(!$("lockAp").checked) put("ap", ap);
+  put("fz", fz); put("vc", vc);
+  syncSliders(); render(); save();
+}
+function runOptimize(){
+  const p = inputs();
+  if(![p.D, p.kc1, p.mc].every(v => isFinite(v) && v > 0)){ setOstat("Set the tool diameter, kc1 and mc first.", "err"); return; }
+  const Lm = limitsMetric();
+  const limits = { nmax:p.nmax, Fmax:Lm.Fmax, slopeMax:Lm.slopeMax, vfmax:Lm.vfmax, hexMax:Lm.hexMax,
+    hmMin:Lm.hmMin ?? 0, vcMin:Lm.vcMin, vcMax:Lm.vcMax };
+  if($("usePow").checked){ limits.Pmax = metric ? p.pmax : p.pmax*C.pow; limits.eta = p.eta; }
+  const opts = { apMax:Lm.apmax };
+  if($("lockAe").checked) opts.aeLock = p.ae;
+  if($("lockAp").checked) opts.apLock = p.ap;
+  $("opt").disabled = true; setOstat("Optimizing…");
+  setTimeout(() => {
+    let r;
+    try{ r = CutOpt.optimize(toolOf(p), limits, opts); }
+    catch(err){ r = { ok:false, reason:"The optimizer hit an error: " + (err && err.message || err) }; }
+    $("opt").disabled = false;
+    lastOpt = Object.assign(r, { D:p.D });
+    if(!r.ok){ setOstat(r.reason, "err"); drawMap(); return; }
+    const b = r.best, L = metric ? LABELS.met : LABELS.imp;
+    applyCut(b);
+    let msg = `Best removal rate ${fsig(b.Q*(metric?1:OUT.mrr),3)} ${L.mrr}, limited by ${b.bindLabel}.`;
+    if(r.snapped) msg += " Depth snapped just under a whole flute pitch for a smoother cut.";
+    if(!(limits.hexMax > 0) && b.hex > 0.008*p.D) msg += ` The chip is ${fsig(b.hex*(metric?1:OUT.len),2)} ${L.len} thick; with no max chip limit the model favors thick chips, so set one for your tool.`;
+    setOstat(msg, "good");
+  }, 30);
+}
+
+/* ---------- limit profiles: browser storage, or the account on claude.ai ---------- */
+const LKEY = "milling-calc-limits";
+let limitProfiles = {}, lstore = { kind:"local" }, lwriting = Promise.resolve(), ldelArmed = null;
+function readLocalLimits(){ try{ const o = JSON.parse(localStorage.getItem(LKEY)); return o && typeof o === "object" ? o : {}; }catch(e){ return {}; } }
+function setLstat(t){ $("lstat").textContent = t; }
+function renderLimitList(selected){
+  const sel = $("lsel"), keep = selected ?? sel.value;
+  sel.innerHTML = "";
+  const none = document.createElement("option"); none.value = ""; none.textContent = "Limit profile…"; sel.appendChild(none);
+  Object.keys(limitProfiles).sort((a,b) => a.localeCompare(b)).forEach(n => { const o = document.createElement("option"); o.value = n; o.textContent = n; sel.appendChild(o); });
+  sel.value = [...sel.options].some(o => o.value === keep) ? keep : "";
+  $("ldel").disabled = !sel.value;
+}
+function persistLimits(){
+  const items = JSON.parse(JSON.stringify(limitProfiles));
+  lwriting = lwriting.then(async () => {
+    if(lstore.kind === "db"){
+      try{ await lstore.ref.set({ items, updatedAt: Date.now() }); setLstat("Saved to your account"); }
+      catch(e){ setLstat(e && e.code === "quota_exceeded" ? "Couldn’t save: storage is full" : "Couldn’t save. Try again."); }
+    } else {
+      try{ localStorage.setItem(LKEY, JSON.stringify(items)); setLstat("Saved in this browser"); }
+      catch(e){ setLstat("Couldn’t save in this browser"); }
+    }
+  });
+  return lwriting;
+}
+async function initLimitStore(){
+  limitProfiles = readLocalLimits(); renderLimitList();
+  let db = null, uid = null;
+  try{
+    if(window.claude && typeof window.claude.use === "function"){
+      const [d, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      db = d; uid = user ? await user.id() : null;
+    }
+  }catch(e){}
+  if(!db || !uid) return;
+  let ref; try{ ref = db.doc("data/users/" + uid + "/limits"); }catch(e){ return; }
+  lstore = { kind:"db", ref };
+  let migrated = false;
+  ref.onSnapshot(snap => {
+    const d = snap.exists ? snap.data() : null;
+    limitProfiles = d && d.items && typeof d.items === "object" ? JSON.parse(JSON.stringify(d.items)) : {};
+    renderLimitList();
+    if(!snap.metadata.fromCache && !migrated){
+      migrated = true;
+      const local = readLocalLimits(), add = Object.keys(local).filter(n => !(n in limitProfiles));
+      if(add.length){ add.forEach(n => limitProfiles[n] = local[n]); renderLimitList(); persistLimits().then(() => { try{ localStorage.removeItem(LKEY); }catch(e){} }); }
+    }
+  }, () => { lstore = { kind:"local" }; limitProfiles = readLocalLimits(); renderLimitList(); setLstat("Account storage unavailable; saving in this browser"); });
+}
+function disarmLdel(){ clearTimeout(ldelArmed); ldelArmed = null; const d = $("ldel"); d.textContent = "Delete"; d.classList.remove("danger"); }
+function wireLimits(){
+  const sel = $("lsel"), name = $("lname"), del = $("ldel");
+  sel.addEventListener("change", () => {
+    disarmLdel(); del.disabled = !sel.value;
+    const pr = limitProfiles[sel.value]; if(!pr) return;
+    setLimitsMetric(pr.limits); $("usePow").checked = !!pr.usePow; name.value = sel.value;
+    setLstat("Loaded “" + sel.value + "”"); render(); save();
+  });
+  $("lsave").addEventListener("click", () => {
+    const n = name.value.trim(); if(!n){ name.focus(); setLstat("Name the profile first"); return; }
+    limitProfiles[n] = { limits: limitsMetric(), usePow: $("usePow").checked };
+    renderLimitList(n); persistLimits();
+  });
+  name.addEventListener("keydown", e => { if(e.key === "Enter") $("lsave").click(); });
+  del.addEventListener("click", () => {
+    if(!sel.value) return;
+    if(!ldelArmed){ del.textContent = "Confirm delete"; del.classList.add("danger"); ldelArmed = setTimeout(disarmLdel, 4000); return; }
+    disarmLdel(); delete limitProfiles[sel.value]; name.value = ""; renderLimitList(""); persistLimits();
+  });
 }
 
 /* ---------- render ---------- */
@@ -564,6 +903,10 @@ function render(){
   $("o_kc").textContent   = fmt(r.kc, 0);
   $("o_def").textContent  = fsig(r.def*m("len"), 2);
   $("o_peak").textContent = fsig(r.Fpeak*m("force"), 3);
+  $("o_fpk").textContent  = fsig(r.Fpeak*m("force"), 3);
+  $("o_slope").textContent   = r.straight ? "unbounded" : fsig(r.slope*m("slope"), 3);
+  $("o_slopems").textContent = r.straight ? "–" : fsig(CutOpt.slopePerMs(r.slope, r.n)*m("slopems"), 3);
+  $("o_ripple").textContent  = fmt(r.ripple*100, 0) + "%";
 
   // load gauge, coloured like steel temper colours
   const L = metric ? LABELS.met : LABELS.imp;
@@ -575,17 +918,27 @@ function render(){
   $("loadTxt").textContent = `${fsig(r.Pmot*m("pow"),3)} of ${fsig(metric ? p.pmax : p.pmax/C.pow, 3)} ${L.pow}`;
 
   const warns = [];
-  if(isFinite(p.nmax) && r.n > p.nmax) warns.push(`Needs ${fmt(r.n,0)} rpm, above your ${fmt(p.nmax,0)} rpm limit. Lower the cutting speed or use a larger tool.`);
+  if(isFinite(p.nmax) && r.n > p.nmax*1.0005) warns.push(`Needs ${fmt(r.n,0)} rpm, above your ${fmt(p.nmax,0)} rpm limit. Lower the cutting speed or use a larger tool.`);
   if(pct > 100) warns.push(`Needs ${fmt(pct,0)}% of spindle power. Reduce stepover, depth or feed.`);
   if(p.ae > p.D) warns.push("Stepover is larger than the tool diameter. Results assume a full slot.");
   if(r.def > 0.025) warns.push(`Tool deflects about ${fsig(r.def*m("len"),2)} ${L.len}. Expect wall taper; shorten stickout or lighten the cut.`);
-  if(r.hm < 0.005) warns.push("Average chip is very thin, so the edge may rub instead of cutting. Raise feed per tooth.");
+  const Lm = limitsMetric(), lu = k => metric ? 1 : OUT[k];
+  if(r.hm < (Lm.hmMin || 0.005)) warns.push("Average chip is very thin, so the edge may rub instead of cutting. Raise feed per tooth.");
+  if(Lm.Fmax && r.Fpeak > Lm.Fmax*1.0001) warns.push(`Peak force ${fsig(r.Fpeak*lu("force"),3)} ${L.force} is over your ${fsig(Lm.Fmax*lu("force"),3)} ${L.force} limit.`);
+  if(Lm.slopeMax && r.straight) warns.push("Straight flutes: the force slope is unbounded, so the slope limit can’t be met.");
+  else if(Lm.slopeMax && r.slope > Lm.slopeMax*1.0001) warns.push(`Force slope ${fsig(r.slope*lu("slope"),3)} ${L.slope} is over your ${fsig(Lm.slopeMax*lu("slope"),3)} ${L.slope} limit.`);
+  if(Lm.vfmax && r.vf > Lm.vfmax*1.0001) warns.push(`Feed ${fsig(r.vf*lu("feed"),3)} ${L.feed} is over your max feed.`);
+  if(Lm.hexMax && r.hex > Lm.hexMax*1.0001) warns.push(`Max chip ${fsig(r.hex*lu("len"),3)} ${L.len} is over your chip limit.`);
+  if(Lm.apmax && p.ap > Lm.apmax*1.0001) warns.push(`Depth is past your max depth (flute length).`);
+  if(Lm.vcMax && p.vc > Lm.vcMax*1.0001) warns.push(`Cutting speed is over your max cutting speed.`);
+  if(Lm.vcMin && p.vc < Lm.vcMin*0.9999) warns.push(`Cutting speed is under your min cutting speed.`);
   $("warns").innerHTML = "";
   if(warns.length){ warns.forEach(w => { const d = document.createElement("div"); d.className = "warn"; d.textContent = w; $("warns").appendChild(d); }); }
   else { const d = document.createElement("div"); d.className = "ok"; d.textContent = "This cut is within your machine’s limits."; $("warns").appendChild(d); }
 
   drawViz(p, r);
-  drawGraph(r.forces, r.Fpeak);
+  drawGraph(r.forces, r.Fpeak, Lm.Fmax, r.straight ? -1 : r.slopeAt);
+  drawMap();
 }
 
 /* ---------- wiring ---------- */
@@ -610,7 +963,9 @@ let userPresets = {}, pstore = { kind:"local" }, pwriting = Promise.resolve(), d
 function currentSettings(){ const s = { metric, mat:$("mat").value }; FIELDS.forEach(f => s[f] = $(f).value); return s; }
 function applySettings(src){
   const s = Object.assign({}, DEFAULTS, src);
+  const keepLimits = limitsMetric();                 // limits aren't part of a setup; keep them across a unit change
   metric = !!s.metric;
+  setLimitsMetric(keepLimits);
   $("mat").value = MATERIALS[s.mat] ? s.mat : "Custom";
   FIELDS.forEach(f => $(f).value = s[f]);
   markTeeth(); setUnitLabels(); syncSliders(); render(); save();
@@ -742,6 +1097,12 @@ function init(){
   FIELDS.forEach(f => $(f).value = s[f]);
   if(sel.value !== "Custom"){ $("kc1").value = MATERIALS[sel.value][0]; $("mc").value = MATERIALS[sel.value][1]; }
   metric = !!s.metric;
+  LFIELDS.forEach(f => {
+    let v = s[f];
+    if(v === undefined){ const d = LIMIT_DEFAULTS[f]; v = d === undefined ? "" : sig(metric ? d : d/C[LCONV[f]]); }
+    $(f).value = v;
+  });
+  CHECKS.forEach(f => $(f).checked = !!s[f]);
   buildTeeth(); markTeeth(); setUnitLabels(); syncSliders();
 
   sel.addEventListener("change", () => {
@@ -761,11 +1122,21 @@ function init(){
   ["ae","ap","fz","vc"].forEach(k => $(k+"_r").addEventListener("input", e => { $(k).value = sig(e.target.value); render(); save(); }));
   $("uImp").addEventListener("click", () => setUnits(false));
   $("uMet").addEventListener("click", () => setUnits(true));
-  window.addEventListener("resize", () => drawGraph(lastForces, lastPeak));
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => drawGraph(lastForces, lastPeak));
+  LFIELDS.forEach(f => $(f).addEventListener("input", () => { render(); save(); }));
+  CHECKS.forEach(f => $(f).addEventListener("change", () => { render(); save(); }));
+  $("opt").addEventListener("click", runOptimize);
+  $("graph").addEventListener("mousemove", graphHover);
+  $("graph").addEventListener("mouseleave", hideTip);
+  $("map").addEventListener("mousemove", mapHover);
+  $("map").addEventListener("mouseleave", hideTip);
+  $("map").addEventListener("click", mapClick);
+  const redraw = () => { drawGraph(G.forces, G.Fpk, G.Fmax, G.slopeAt); drawMap(); };
+  window.addEventListener("resize", redraw);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 
   render();
   useLocalStore(); wirePresets(); initPresetStore();
+  wireLimits(); initLimitStore();
 }
 document.addEventListener("DOMContentLoaded", init);
 </script>

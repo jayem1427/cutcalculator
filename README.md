@@ -10,7 +10,9 @@ A single-page milling speeds, feeds and cutting-load calculator for side milling
 - Exact average chip thickness for any radial engagement, plus a chip-thinning factor
 - To-scale top view and cross-section showing stepover (aₑ) and depth of cut (aₚ)
 - Spindle load gauge with warnings for rpm limits, power limits, tool deflection and rubbing chips
-- Instantaneous cutting force over one revolution, including helix angle
+- Exact instantaneous cutting force over one revolution (closed-form integral along the helix), with peak force, force slope (N/° and N/ms) and ripple
+- **Optimize:** picks stepover, depth, feed per tooth and spindle speed for the highest removal rate inside your limits (peak force, force slope, feed, power, chip thickness, cutting speed, depth). Lock stepover or depth to keep it fixed. Limits save as named profiles.
+- Stepover × depth map of removal rate, with the failing limit labelled and smooth-stepdown depths drawn. Click a cell to use it.
 - Imperial and metric units
 - Saved setups (stored in your browser), plus built-in example cuts
 - Works offline as one HTML file, with no build step
@@ -28,7 +30,39 @@ A single-page milling speeds, feeds and cutting-load calculator for side milling
 | Net power | P<sub>c</sub> = a<sub>e</sub>·a<sub>p</sub>·v<sub>f</sub>·k<sub>c</sub> / (60·10⁶) |
 | Torque | M<sub>c</sub> = P<sub>c</sub>·30·10³ / (π·n) |
 
-Tool deflection (a cantilever with an equivalent diameter of 0.8·D) and the force-per-revolution curve are estimates.
+| Max chip | h<sub>ex</sub> = f<sub>z</sub>·sin φ for a<sub>e</sub> < D/2, else f<sub>z</sub> |
+| Force slope (time) | dF/dt = dF/dθ · 6·n / 1000 (N/ms) |
+| Flute pitch | πD / (z·tan β) |
+
+Tool deflection (a cantilever with an equivalent diameter of 0.8·D) is an estimate. The force curve is the exact integral of k<sub>c</sub>·f<sub>z</sub>·sin θ along each helical flute.
+
+### How the optimizer works
+
+Force and force slope both scale exactly with f<sub>z</sub><sup>1−m<sub>c</sub></sup>, and per degree of rotation neither depends on rpm. So the optimizer runs the spindle as fast as the rpm and cutting-speed limits allow. Then, on a grid of stepover × depth (log-spaced stepover), it computes one force curve per point and solves for the largest f<sub>z</sub> every limit allows. It refines around the best point and re-checks the final cut on a 0.05° force curve. All of it lives in `optimizer.js`, which the page, the tests and the Fusion add-in share.
+
+**Smooth stepdowns.** Force is nearly constant at depths *just under* a whole multiple of the flute pitch. Go even slightly deeper and the full force slope comes back. So near a multiple, slope is taken as the worst within ±0.05 mm of depth, and the optimizer snaps depth to just under a multiple when that gives at least 99% of the best removal rate.
+
+### Reference cases (checked by `tests/optimizer.test.js`)
+
+Both use 6061 (k<sub>c1</sub> 295, m<sub>c</sub> 0.25), rake 0°, κ<sub>r</sub> 90°.
+
+| | Sandvik check | 3/8" HSM |
+|---|---|---|
+| D, z, helix | 6 mm, 4, 35° | 9.525 mm, 3, 45° |
+| a<sub>e</sub>, a<sub>p</sub> (mm) | 1.67, 15 | 0.5, 10 |
+| f<sub>z</sub>, v<sub>c</sub> | 0.0654, 452.39 | 0.06, 612 |
+| P<sub>c</sub> | 1.82 kW | 265 W |
+| Peak force | 271.9 N | 26.5 N |
+| Max force slope | 3.04 N/° | 1.92 N/° |
+
+Run the tests with `node --test tests/optimizer.test.js`.
+
+### Known limitations
+
+- Adaptive toolpaths go above the nominal engagement in corners. The optimizer uses nominal engagement, so leave margin on the force limit.
+- Forces are tangential only. The resultant force is typically 1.1–1.3× higher.
+- Thicker chips lower k<sub>c</sub>, so with no max chip thickness set, the optimizer tends toward thick chips. Set a max chip thickness for your tool.
+- Only wrought aluminium (and cast, by scaling) is calibrated to Sandvik.
 
 ### Calibration
 
