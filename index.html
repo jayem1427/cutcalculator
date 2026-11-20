@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Milling calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9ECEE; --surface:#F7F8F9; --ink:#16202A; --muted:#5B6672; --line:#CBD1D7;
+  --dykem:#2B3A8F; --dykem-soft:rgba(43,58,143,.10);
+  --stock:#B7BEC6; --stock-cut:#DCE1E5; --cutter:#3A434D; --cutter-hi:#8E99A4;
+  --straw:#C99A2E; --bronze:#A8622A; --purple:#6C3F8F; --blue:#2F5DA8;
+  --warn-bg:#FBF1DC; --warn-ink:#6B4A0E;
+  --sans:"Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --num:"Barlow Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1F25; --surface:#232930; --ink:#E7EBEE; --muted:#9BA6B0; --line:#363E48;
+    --dykem:#8D9DF2; --dykem-soft:rgba(141,157,242,.14);
+    --stock:#4B545E; --stock-cut:#6B7580; --cutter:#C9D1D8; --cutter-hi:#6D7782;
+    --straw:#D9B04A; --bronze:#C77B3E; --purple:#A57BC9; --blue:#6E95DA;
+    --warn-bg:#3A2F1A; --warn-ink:#F0D49A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1F25; --surface:#232930; --ink:#E7EBEE; --muted:#9BA6B0; --line:#363E48;
+  --dykem:#8D9DF2; --dykem-soft:rgba(141,157,242,.14);
+  --stock:#4B545E; --stock-cut:#6B7580; --cutter:#C9D1D8; --cutter-hi:#6D7782;
+  --straw:#D9B04A; --bronze:#C77B3E; --purple:#A57BC9; --blue:#6E95DA;
+  --warn-bg:#3A2F1A; --warn-ink:#F0D49A;
+  color-scheme: dark;
+}
+:root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+*,*::before,*::after{ box-sizing:inherit; margin:0; padding:0; }
+body{ background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.wrap{ max-width:1180px; margin:0 auto; padding:28px 22px 40px; }
+
+/* header */
+header{ display:flex; justify-content:space-between; align-items:flex-end; gap:18px; flex-wrap:wrap; margin-bottom:22px; }
+h1{ font-family:var(--num); font-weight:600; font-size:40px; line-height:1; letter-spacing:-.01em; }
+header p{ color:var(--muted); margin-top:6px; max-width:52ch; }
+.units{ display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:3px; background:var(--surface); }
+.units button{ font:500 14px var(--sans); color:var(--muted); background:none; border:0; border-radius:999px; padding:6px 16px; cursor:pointer; }
+.units button[aria-pressed="true"]{ background:var(--dykem); color:var(--surface); }
+button:focus-visible, input:focus-visible, select:focus-visible{ outline:2px solid var(--dykem); outline-offset:2px; }
+
+/* hero */
+.hero{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:0; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+.view{ position:relative; border-right:1px solid var(--line); background:
+  linear-gradient(var(--line) 1px, transparent 1px) 0 0/24px 24px,
+  linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/24px 24px; background-color:var(--surface); }
+.view svg{ display:block; width:100%; height:auto; }
+.view .cap{ position:absolute; left:16px; top:12px; font-size:13px; color:var(--muted); background:var(--surface); padding:2px 8px; border-radius:6px; }
+.readout{ padding:24px 26px; display:flex; flex-direction:column; gap:18px; justify-content:center; }
+.big .v{ font-family:var(--num); font-weight:600; font-size:64px; line-height:.95; font-variant-numeric:tabular-nums; }
+.big .u{ font-size:16px; color:var(--muted); margin-left:6px; font-family:var(--sans); font-weight:500; }
+.big .l{ color:var(--muted); font-size:14px; margin-bottom:2px; }
+.big.feed .v{ color:var(--dykem); }
+.engage{ display:flex; gap:22px; color:var(--muted); font-size:14px; border-top:1px solid var(--line); padding-top:14px; }
+.engage b{ color:var(--ink); font-family:var(--num); font-size:22px; font-weight:600; display:block; line-height:1.1; }
+
+/* layout below */
+.below{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; margin-top:22px; }
+.panel{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 22px; }
+.panel h2{ font-size:18px; font-weight:600; margin-bottom:4px; }
+.panel .sub{ color:var(--muted); font-size:13px; margin-bottom:14px; }
+.stack{ display:flex; flex-direction:column; gap:22px; }
+
+/* sliders */
+.slide{ margin-bottom:16px; }
+.slide .top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:4px; }
+.slide label{ font-weight:500; }
+.slide .note{ color:var(--muted); font-size:13px; }
+.numbox{ display:flex; align-items:center; gap:6px; }
+.numbox input{ width:96px; text-align:right; font:600 18px var(--num); font-variant-numeric:tabular-nums; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:3px 8px; }
+.numbox span{ color:var(--muted); font-size:13px; min-width:58px; }
+input[type=range]{ width:100%; accent-color:var(--dykem); height:22px; }
+
+/* compact fields */
+.fields{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 18px; }
+.f label{ display:block; font-size:13px; color:var(--muted); margin-bottom:3px; }
+.f .numbox input{ width:100%; }
+.f select{ width:100%; font:500 15px var(--sans); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+.f.wide{ grid-column:1/-1; }
+.teeth{ display:flex; gap:6px; }
+.teeth button{ flex:1; font:600 18px var(--num); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:3px 0; cursor:pointer; }
+.teeth button[aria-pressed="true"]{ background:var(--dykem); border-color:var(--dykem); color:var(--surface); }
+
+/* results */
+.res{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px 18px; }
+.r .l{ color:var(--muted); font-size:13px; }
+.r .v{ font:600 26px var(--num); font-variant-numeric:tabular-nums; line-height:1.15; }
+.r .v small{ font:500 13px var(--sans); color:var(--muted); margin-left:4px; }
+.load{ margin:6px 0 4px; }
+.load .bar{ height:12px; border-radius:6px; background:var(--bg); border:1px solid var(--line); overflow:hidden; }
+.load .fill{ height:100%; width:0; border-radius:6px; transition:width .25s ease, background-color .25s ease; }
+.load .meta{ display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-top:4px; }
+.temper{ display:flex; gap:10px; font-size:12px; color:var(--muted); margin-top:2px; flex-wrap:wrap; }
+.temper i{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+canvas{ width:100%; height:150px; display:block; border-radius:6px; background:var(--bg); border:1px solid var(--line); }
+.warns{ display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.warn{ background:var(--warn-bg); color:var(--warn-ink); border-radius:8px; padding:9px 12px; font-size:14px; }
+.ok{ color:var(--muted); font-size:14px; margin-top:14px; }
+.presets{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin-bottom:16px; }
+.presets label{ font-size:13px; color:var(--muted); }
+.presets select, .presets input{ font:500 15px var(--sans); color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; min-width:0; }
+.presets select{ flex:1 1 220px; max-width:340px; }
+.presets input{ flex:1 1 170px; max-width:240px; }
+.btn{ font:500 14px var(--sans); border:1px solid var(--line); background:var(--bg); color:var(--ink); border-radius:6px; padding:6px 14px; cursor:pointer; }
+.btn.primary{ background:var(--dykem); border-color:var(--dykem); color:var(--surface); }
+.btn.danger{ border-color:var(--bronze); color:var(--bronze); }
+.btn:disabled{ opacity:.45; cursor:default; }
+.pstat{ font-size:13px; color:var(--muted); margin-left:auto; }
+footer{ color:var(--muted); font-size:13px; margin-top:26px; max-width:80ch; }
+footer p + p{ margin-top:6px; }
+sub{ font-size:.72em; }
+
+@media (max-width:860px){
+  .hero{ grid-template-columns:1fr; }
+  .view{ border-right:0; border-bottom:1px solid var(--line); }
+  .below{ grid-template-columns:1fr; }
+  .big .v{ font-size:52px; }
+  h1{ font-size:34px; }
+}
+@media (max-width:420px){
+  .fields, .res{ grid-template-columns:1fr 1fr; gap:10px 12px; }
+  .wrap{ padding:20px 14px 32px; }
+}
+@media (prefers-reduced-motion: reduce){ .load .fill{ transition:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Milling calculator</h1>
+      <p>Speeds, feeds and cutting loads for side and slot milling, using Sandvik Coromant’s specific cutting force model.</p>
+    </div>
+    <div class="units" role="group" aria-label="Units">
+      <button id="uImp" aria-pressed="true">Imperial</button>
+      <button id="uMet" aria-pressed="false">Metric</button>
+    </div>
+  </header>
+
+  <section class="presets" aria-label="Saved setups">
+    <label for="psel">Setup</label>
+    <select id="psel"></select>
+    <input id="pname" type="text" maxlength="60" placeholder="Name this setup" aria-label="Setup name">
+    <button id="psave" class="btn primary" type="button">Save</button>
+    <button id="pdel" class="btn" type="button">Delete</button>
+    <span id="pstat" class="pstat" aria-live="polite"></span>
+  </section>
+
+  <section class="hero" aria-label="Cut overview">
+    <div class="view">
+      <svg id="viz" viewBox="0 0 640 320" role="img" aria-label="Top view and cross-section of the cutter in the workpiece, showing stepover and depth of cut"></svg>
+    </div>
+    <div class="readout">
+      <div class="big">
+        <div class="l">Spindle speed</div>
+        <div><span class="v" id="o_rpm">–</span><span class="u">rpm</span></div>
+      </div>
+      <div class="big feed">
+        <div class="l">Feed rate</div>
+        <div><span class="v" id="o_vf">–</span><span class="u" data-u="feed">in/min</span></div>
+      </div>
+      <div class="engage">
+        <div><b id="o_aepct">–</b>of diameter engaged</div>
+        <div><b id="o_angle">–</b>engagement arc</div>
+        <div><b id="o_hmr">–</b>chip thinning</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="below">
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-cut">
+        <h2 id="h-cut">The cut</h2>
+        <p class="sub">Drag or type. Everything updates as you go.</p>
+
+        <div class="slide">
+          <div class="top"><label for="ae">Stepover (a<sub>e</sub>)</label>
+            <div class="numbox"><input id="ae" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
+          <input type="range" id="ae_r" aria-label="Stepover slider">
+        </div>
+        <div class="slide">
+          <div class="top"><label for="ap">Depth of cut (a<sub>p</sub>)</label>
+            <div class="numbox"><input id="ap" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
+          <input type="range" id="ap_r" aria-label="Depth of cut slider">
+        </div>
+        <div class="slide">
+          <div class="top"><label for="fz">Feed per tooth (f<sub>z</sub>)</label>
+            <div class="numbox"><input id="fz" type="number" step="any" inputmode="decimal"><span data-u="fz">in/tooth</span></div></div>
+          <input type="range" id="fz_r" aria-label="Feed per tooth slider">
+        </div>
+        <div class="slide">
+          <div class="top"><label for="vc">Cutting speed (v<sub>c</sub>)</label>
+            <div class="numbox"><input id="vc" type="number" step="any" inputmode="decimal"><span data-u="vc">ft/min</span></div></div>
+          <input type="range" id="vc_r" aria-label="Cutting speed slider">
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-tool">
+        <h2 id="h-tool">Tool and material</h2>
+        <p class="sub">Picking a material fills in k<sub>c1</sub> and m<sub>c</sub>. Edit either to use your own values.</p>
+        <div class="fields">
+          <div class="f wide"><label for="mat">Material</label><select id="mat"></select></div>
+          <div class="f"><label for="kc1">k<sub>c1</sub> (N/mm²)</label><div class="numbox"><input id="kc1" type="number" step="10"></div></div>
+          <div class="f"><label for="mc">m<sub>c</sub></label><div class="numbox"><input id="mc" type="number" step="0.01"></div></div>
+          <div class="f"><label for="D">Diameter</label><div class="numbox"><input id="D" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
+          <div class="f"><label for="so">Stickout</label><div class="numbox"><input id="so" type="number" step="any" inputmode="decimal"><span data-u="len">in</span></div></div>
+          <div class="f wide"><label id="lz">Flutes</label>
+            <div class="teeth" role="group" aria-labelledby="lz" id="teeth"></div>
+            <input id="z" type="hidden">
+          </div>
+          <div class="f"><label for="helix">Helix angle (°)</label><div class="numbox"><input id="helix" type="number" step="1"></div></div>
+          <div class="f"><label for="rake">Rake angle γ<sub>0</sub> (°)</label><div class="numbox"><input id="rake" type="number" step="1"></div></div>
+          <div class="f"><label for="kappa">Entering angle κ<sub>r</sub> (°)</label><div class="numbox"><input id="kappa" type="number" step="1"></div></div>
+          <div class="f"><label for="E">Tool modulus (GPa)</label><div class="numbox"><input id="E" type="number" step="10"></div></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-mach">
+        <h2 id="h-mach">Your machine</h2>
+        <p class="sub">Used to flag cuts your spindle can’t deliver.</p>
+        <div class="fields">
+          <div class="f"><label for="pmax">Spindle power</label><div class="numbox"><input id="pmax" type="number" step="any" inputmode="decimal"><span data-u="pow">HP</span></div></div>
+          <div class="f"><label for="nmax">Max spindle speed</label><div class="numbox"><input id="nmax" type="number" step="100"><span>rpm</span></div></div>
+          <div class="f"><label for="eta">Spindle efficiency η</label><div class="numbox"><input id="eta" type="number" step="0.05" min="0.1" max="1"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-load">
+        <h2 id="h-load">Spindle load</h2>
+        <div class="load">
+          <div class="bar"><div class="fill" id="loadFill"></div></div>
+          <div class="meta"><span id="loadTxt">–</span><span id="loadPct">–</span></div>
+        </div>
+        <div class="temper" aria-hidden="true">
+          <span><i style="background:var(--straw)"></i>Light</span>
+          <span><i style="background:var(--bronze)"></i>Moderate</span>
+          <span><i style="background:var(--purple)"></i>Heavy</span>
+          <span><i style="background:var(--blue)"></i>Over capacity</span>
+        </div>
+        <div class="warns" id="warns"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-res">
+        <h2 id="h-res">Cutting loads</h2>
+        <p class="sub">Net values at the tool unless noted.</p>
+        <div class="res">
+          <div class="r"><div class="l">Net power P<sub>c</sub></div><div class="v"><span id="o_pc">–</span><small data-u="pow">HP</small></div></div>
+          <div class="r"><div class="l">Motor power</div><div class="v"><span id="o_pmot">–</span><small data-u="pow">HP</small></div></div>
+          <div class="r"><div class="l">Spindle torque</div><div class="v"><span id="o_tq">–</span><small data-u="tq">in·lbf</small></div></div>
+          <div class="r"><div class="l">Cutting force F<sub>c</sub></div><div class="v"><span id="o_fc">–</span><small data-u="force">lbf</small></div></div>
+          <div class="r"><div class="l">Removal rate Q</div><div class="v"><span id="o_mrr">–</span><small data-u="mrr">in³/min</small></div></div>
+          <div class="r"><div class="l">Avg chip thickness h<sub>m</sub></div><div class="v"><span id="o_hm">–</span><small data-u="len">in</small></div></div>
+          <div class="r"><div class="l">Specific force k<sub>c</sub></div><div class="v"><span id="o_kc">–</span><small>N/mm²</small></div></div>
+          <div class="r"><div class="l">Tool deflection</div><div class="v"><span id="o_def">–</span><small data-u="len">in</small></div></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-force">
+        <h2 id="h-force">Force through one revolution</h2>
+        <p class="sub">Peak <span id="o_peak">–</span> <span data-u="force">lbf</span>. Smoother curves mean less chatter-prone cuts.</p>
+        <canvas id="graph" aria-label="Instantaneous cutting force over one spindle revolution"></canvas>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <p>Spindle speed, feed, removal rate, k<sub>c</sub>, power and torque follow Sandvik Coromant’s milling formulas. Average chip thickness uses the exact side-milling form, which matches Sandvik’s approximation at light stepovers. Deflection (cantilever with an equivalent diameter of 0.8 × D) and the force curve are estimates.</p>
+    <p>Wrought aluminium k<sub>c1</sub> is calibrated to Sandvik CoroPlus ToolGuide (6061, 88 HB: 6 mm 4-flute, a<sub>e</sub> 1.67, a<sub>p</sub> 15, 24,000 rpm → 1.82 kW). Cast aluminium is scaled by the same factor. Other materials use reference values that have not been checked against Sandvik.</p>
+    <p>Planning values only. Verify against your tooling and setup.</p>
+  </footer>
+</div>
+
+<script>
+const MATERIALS = {
+  "Aluminium (wrought)":[295,0.25], "Aluminium (cast)":[345,0.25], "Brass / bronze":[550,0.25],
+  "Copper":[900,0.25], "Grey cast iron (<200 HB)":[1020,0.25], "Nodular cast iron":[1350,0.25],
+  "Structural steel":[1780,0.21], "Carbon steel":[2000,0.21], "Alloy steel":[2260,0.20],
+  "Tool steel (hardened)":[2900,0.20], "Stainless (austenitic)":[2000,0.21], "Stainless (martensitic)":[2400,0.21],
+  "Titanium alloy":[1500,0.25], "Nickel superalloy":[2650,0.25], "Plastic":[180,0.22], "Custom":[700,0.25]
+};
+const DEFAULTS = { metric:false, mat:"Aluminium (wrought)", kc1:295, mc:0.25, D:0.25, z:2, helix:30, rake:0, kappa:90,
+  so:1.25, E:600, eta:0.85, ae:0.05, ap:0.1, fz:0.001, vc:1000, pmax:2.95, nmax:24000 };
+const KEY = "milling-calc-v2";
+
+const C = { len:25.4, fz:25.4, vc:1/3.28084, pow:0.745700 };        // imperial -> metric
+const OUT = { len:1/25.4, feed:1/25.4, mrr:0.0610237, pow:1.34102, force:0.224809, tq:8.85075 };
+const LABELS = {
+  imp:{len:"in",fz:"in/tooth",vc:"ft/min",feed:"in/min",mrr:"in³/min",pow:"HP",force:"lbf",tq:"in·lbf"},
+  met:{len:"mm",fz:"mm/tooth",vc:"m/min",feed:"mm/min",mrr:"cm³/min",pow:"kW",force:"N",tq:"N·m"}
+};
+const CONVERT = { D:"len", so:"len", ae:"len", ap:"len", fz:"fz", vc:"vc", pmax:"pow" };
+const FIELDS = ["kc1","mc","D","z","helix","rake","kappa","so","E","eta","ae","ap","fz","vc","pmax","nmax"];
+const $ = id => document.getElementById(id);
+let metric = false;
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function sig(x){ x = parseFloat(x); return isFinite(x) ? parseFloat(x.toPrecision(5)) : ""; }
+function num(id){ return parseFloat($(id).value); }
+
+/* ---------- persistence ---------- */
+function save(){
+  try{
+    const s = { metric, mat:$("mat").value };
+    FIELDS.forEach(f => s[f] = $(f).value);
+    localStorage.setItem(KEY, JSON.stringify(s));
+  }catch(e){}
+}
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && typeof s === "object") return Object.assign({}, DEFAULTS, s); }catch(e){}
+  return Object.assign({}, DEFAULTS);
+}
+
+/* ---------- slider ranges (display units) ---------- */
+function ranges(){
+  const D = num("D") || 1;
+  return {
+    ae:[D/200, D, D/200],
+    ap:[D/100, D*4, D/100],
+    fz: metric ? [0.0025,0.25,0.0005] : [0.0001,0.01,0.00002],
+    vc: metric ? [10,1000,1] : [30,3500,5]
+  };
+}
+function syncSliders(){
+  const R = ranges();
+  ["ae","ap","fz","vc"].forEach(k=>{
+    const r = $(k+"_r"); r.min = R[k][0]; r.max = R[k][1]; r.step = R[k][2]; r.value = $(k).value;
+  });
+}
+
+/* ---------- units ---------- */
+function setUnitLabels(){
+  const L = metric ? LABELS.met : LABELS.imp;
+  document.querySelectorAll("[data-u]").forEach(el => { const k = el.getAttribute("data-u"); if(L[k]) el.textContent = L[k]; });
+  $("uImp").setAttribute("aria-pressed", String(!metric));
+  $("uMet").setAttribute("aria-pressed", String(metric));
+}
+function setUnits(toMetric){
+  if(toMetric === metric) return;
+  Object.entries(CONVERT).forEach(([id,k]) => {
+    const v = num(id); if(isFinite(v)) $(id).value = sig(toMetric ? v*C[k] : v/C[k]);
+  });
+  metric = toMetric;
+  setUnitLabels(); syncSliders(); render(); save();
+}
+
+/* ---------- core computation (internal metric) ---------- */
+function inputs(){
+  const g = id => metric ? num(id) : num(id) * C[CONVERT[id]];
+  return { D:g("D"), so:g("so"), ae:g("ae"), ap:g("ap"), fz:g("fz"), vc:g("vc"), pmax:g("pmax"),
+    z:Math.max(1,Math.round(num("z"))), helix:num("helix"), rake:num("rake"), kappa:num("kappa"),
+    E:num("E"), eta:num("eta"), kc1:num("kc1"), mc:num("mc"), nmax:num("nmax") };
+}
+function compute(p){
+  const rad = d => d*Math.PI/180;
+  const n  = 1000*p.vc/(Math.PI*p.D);
+  const vf = p.fz*n*p.z;
+  const Q  = p.ae*p.ap*vf/1000;
+  // exact side-milling average chip thickness: hm = fz·sinκr·(2ae/D)/φ, φ = acos(1 − 2ae/D)
+  const aeR = Math.min(Math.max(p.ae/p.D, 1e-9), 1);
+  const phi = Math.acos(1 - 2*aeR);
+  const hm = Math.max(1e-4, p.fz*Math.sin(rad(p.kappa))*(2*aeR)/phi);
+  const kc = p.kc1*Math.pow(hm,-p.mc)*(1 - 0.01*p.rake);
+  const Pc = p.ae*p.ap*vf*kc/60e6;
+  const Pmot = Pc/p.eta;
+  const Mc = Pc*30e3/(Math.PI*n);
+  const Fc = Pc*1000*60/p.vc;
+  const Ieq = Math.PI*Math.pow(0.8*p.D,4)/64;
+  const def = Fc*Math.pow(p.so,3)/(3*p.E*1000*Ieq);
+  const {forces, Fpeak} = instForce(p, kc);
+  return { n, vf, Q, hm, kc, Pc, Pmot, Mc, Fc, def, forces, Fpeak, phi, aeR };
+}
+function instForce(p, kc){
+  const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
+  const R=p.D/2, step=2, dz=Math.max(p.ap/60, 1e-4);
+  const engAng = deg(Math.acos(Math.max(-1, 1 - p.ae/R)));
+  const startEng = 180 - engAng;
+  const forces=[]; let Fpk=0;
+  for(let a=0;a<360;a+=step){
+    let area=0;
+    for(let t=0;t<p.z;t++){
+      const t0 = a + 360*(t/p.z);
+      for(let z=p.ap; z>=0; z-=dz){
+        let ta = t0 + deg(-z*Math.tan(rad(p.helix))/R);
+        ta -= 360*Math.floor(ta/360);
+        if(ta>startEng && ta<180) area += p.fz*Math.sin(rad(ta))*dz;
+      }
+    }
+    const F = kc*area; Fpk = Math.max(Fpk,F); forces.push(F);
+  }
+  return { forces, Fpeak:Fpk };
+}
+
+/* ---------- formatting ---------- */
+function fmt(v, dec){
+  if(!isFinite(v)) return "–";
+  return Number(v).toLocaleString(undefined, { minimumFractionDigits:dec, maximumFractionDigits:dec });
+}
+function fsig(v, s=3){
+  if(!isFinite(v)) return "–";
+  if(v === 0) return "0";
+  const d = Math.max(0, s - 1 - Math.floor(Math.log10(Math.abs(v))));
+  return fmt(v, Math.min(d, 6));
+}
+
+/* ---------- cutter visualization: two static views ---------- */
+const NS = "http://www.w3.org/2000/svg";
+const NUMF = "Barlow Condensed, Arial Narrow, sans-serif";
+function el(tag, attrs, parent){ const e = document.createElementNS(NS, tag); for(const k in attrs) e.setAttribute(k, attrs[k]); if(parent) parent.appendChild(e); return e; }
+function txt(parent, x, y, str, o={}){
+  const t = el("text", Object.assign({ x, y, fill:"var(--ink)", "font-family":NUMF, "font-size":16, "font-weight":600 }, o), parent);
+  t.textContent = str; return t;
+}
+function arrowHead(parent, x, y, dir, color){
+  const m = { l:`l 8 -4 l 0 8`, r:`l -8 -4 l 0 8`, u:`l -4 8 l 8 0`, d:`l -4 -8 l 8 0` }[dir];
+  el("path", { d:`M${x} ${y} ${m} Z`, fill:color }, parent);
+}
+function dimH(g, x1, x2, y, label, color, above=true){
+  el("line", { x1, y1:y, x2, y2:y, stroke:color, "stroke-width":1.2 }, g);
+  if(x2 - x1 > 18){ arrowHead(g, x1, y, "l", color); arrowHead(g, x2, y, "r", color); }
+  txt(g, (x1+x2)/2, above ? y-7 : y+17, label, { "text-anchor":"middle", fill:color });
+}
+function dimV(g, x, y1, y2, label, color, side="left"){
+  el("line", { x1:x, y1, x2:x, y2, stroke:color, "stroke-width":1.2 }, g);
+  if(y2 - y1 > 18){ arrowHead(g, x, y1, "u", color); arrowHead(g, x, y2, "d", color); }
+  txt(g, side === "left" ? x-7 : x+7, (y1+y2)/2+6, label, { "text-anchor": side === "left" ? "end" : "start", fill:color });
+}
+function ext(g, x1, y1, x2, y2){ el("line", { x1, y1, x2, y2, stroke:"var(--ink)", "stroke-width":.6, "stroke-dasharray":"3 3" }, g); }
+
+function drawViz(p, r){
+  const svg = $("viz"); svg.innerHTML = "";
+  const W=640, H=320, PW=320;
+  const L = metric ? LABELS.met : LABELS.imp;
+  const lenOut = v => metric ? v : v*OUT.len;
+  const aeC = Math.min(p.ae, p.D);
+
+  el("line", { x1:PW, y1:16, x2:PW, y2:H-16, stroke:"var(--line)", "stroke-width":1 }, svg);
+  txt(svg, 16, 26, "Top view", { "font-family":"var(--sans)", "font-size":13, "font-weight":500, fill:"var(--muted)" });
+  txt(svg, PW+16, 26, "Section across the feed", { "font-family":"var(--sans)", "font-size":13, "font-weight":500, fill:"var(--muted)" });
+
+  /* --- top view: stepover, engagement arc, feed --- */
+  {
+    const g = el("g", {}, svg);
+    const R=66, cx=140, cy=142, aePx = aeC/p.D*2*R;
+    const Sh = cy + R, Ys = Sh - aePx;
+    el("path", { d:`M${cx} ${Sh} L0 ${Sh} L0 ${H} L${PW} ${H} L${PW} ${Ys} L${cx} ${Ys} Z`, fill:"var(--stock)" }, g);
+    el("line", { x1:0, y1:Sh, x2:cx, y2:Sh, stroke:"var(--stock-cut)", "stroke-width":2 }, g);
+    el("circle", { cx, cy, r:R, fill:"var(--cutter-hi)", stroke:"var(--cutter)", "stroke-width":2 }, g);
+    el("circle", { cx, cy, r:4, fill:"var(--cutter)" }, g);
+    const dy = Math.max(Ys - cy, -R);
+    if(dy < R){
+      const xi = cx + Math.sqrt(Math.max(0, R*R - dy*dy));
+      el("path", { d:`M${cx} ${Sh} A ${R} ${R} 0 0 0 ${xi} ${cy+dy}`, fill:"none", stroke:"var(--dykem)", "stroke-width":6, "stroke-linecap":"round" }, g);
+    }
+    const dY = cy - R - 16;
+    ext(g, cx-R, dY-5, cx-R, cy); ext(g, cx+R, dY-5, cx+R, cy);
+    dimH(g, cx-R, cx+R, dY, `Ø ${fsig(lenOut(p.D),3)}`, "var(--ink)");
+    const ax = cx + R + 30;
+    ext(g, cx, Ys, ax+6, Ys); ext(g, cx, Sh, ax+6, Sh);
+    dimV(g, ax, Ys, Sh, `aₑ ${fsig(lenOut(p.ae),3)}`, "var(--dykem)", "right");
+    const fy = H - 26;
+    el("line", { x1:cx-70, y1:fy, x2:cx+30, y2:fy, stroke:"var(--ink)", "stroke-width":1.6 }, g);
+    arrowHead(g, cx+40, fy, "r", "var(--ink)");
+    txt(g, cx+48, fy+6, `${fsig(r.vf*(metric?1:OUT.feed),3)} ${L.feed}`);
+  }
+
+  /* --- section across the feed: stepover × depth, tool silhouette --- */
+  {
+    const g = el("g", {}, svg);
+    const top = 40, bottom = H - 16, left = PW + 92, right = W - 16;
+    const s = Math.min(112 / p.D, (bottom - top - 64) / (p.ap + 0.5*p.D));
+    const toolW = p.D*s, apPx = p.ap*s, aePx = aeC*s;
+    const Sh = left + toolW;                 // tool's cutting edge = finished wall
+    const Ys = Sh - aePx;                    // original stock face
+    const Zt = bottom - 46 - apPx;  // stock top
+    const Zf = Zt + apPx;                    // floor of this pass
+    // stock block (left face at Ys, notch removed)
+    el("path", { d:`M${Ys} ${Zf} L${Sh} ${Zf} L${Sh} ${Zt} L${right} ${Zt} L${right} ${bottom} L${Ys} ${bottom} Z`, fill:"var(--stock)" }, g);
+    // tool: flutes over the cut, shank above
+    const fluteTop = Math.max(top+6, Zt - Math.max(0.6*p.D*s, 14));
+    el("rect", { x:Sh-toolW, y:top-4, width:toolW, height:fluteTop-top+4, fill:"var(--cutter-hi)", stroke:"var(--cutter)", "stroke-width":1.5 }, g);
+    el("rect", { x:Sh-toolW, y:fluteTop, width:toolW, height:Zf-fluteTop, fill:"var(--surface)", stroke:"var(--cutter)", "stroke-width":2 }, g);
+    const clip = el("clipPath", { id:"fl" }, g);
+    el("rect", { x:Sh-toolW, y:fluteTop, width:toolW, height:Zf-fluteTop }, clip);
+    const fg = el("g", { "clip-path":"url(#fl)" }, g);
+    const tanH = Math.tan(Math.min(Math.max(p.helix,5),60)*Math.PI/180);
+    const rise = toolW*(Math.PI/2)/tanH;                     // axial rise across the visible width
+    const pitchPx = Math.max(Math.PI*toolW/(Math.max(1,p.z)*tanH), 6);
+    for(let y = fluteTop - 2; y < Zf + rise + pitchPx; y += pitchPx){
+      el("line", { x1:Sh-toolW, y1:y, x2:Sh, y2:y - rise, stroke:"var(--cutter)", "stroke-width":1.4 }, fg);
+    }
+    // engaged area: the strip of material removed this pass (drawn over the tool)
+    el("rect", { x:Ys, y:Zt, width:aePx, height:apPx, fill:"var(--dykem)", "fill-opacity":.28, stroke:"var(--dykem)", "stroke-width":2 }, g);
+    // dimensions
+    const ay = Zf + 22;
+    ext(g, Ys, Zf, Ys, ay+5); ext(g, Sh, Zf, Sh, ay+5);
+    if(aePx > 40) dimH(g, Ys, Sh, ay, `aₑ ${fsig(lenOut(p.ae),3)}`, "var(--dykem)", false);
+    else { el("line", { x1:Ys-14, y1:ay, x2:Sh+30, y2:ay, stroke:"var(--dykem)", "stroke-width":1.2 }, g);
+           arrowHead(g, Ys, ay, "r", "var(--dykem)"); arrowHead(g, Sh, ay, "l", "var(--dykem)");
+           txt(g, Sh+34, ay+6, `aₑ ${fsig(lenOut(p.ae),3)}`, { fill:"var(--dykem)" }); }
+    const dx = Sh - toolW - 16;
+    ext(g, dx-6, Zt, Ys, Zt); ext(g, dx-6, Zf, Sh-toolW, Zf);
+    dimV(g, dx, Zt, Zf, `aₚ ${fsig(lenOut(p.ap),3)}`, "var(--dykem)", "left");
+    txt(g, right, 26, `Dimensions in ${L.len}`, { "text-anchor":"end", "font-family":"var(--sans)", "font-size":12, "font-weight":500, fill:"var(--muted)" });
+  }
+}
+
+/* ---------- force graph ---------- */
+let lastForces = [], lastPeak = 0;
+function drawGraph(forces, Fpk){
+  lastForces = forces; lastPeak = Fpk;
+  const cv = $("graph"), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 360, H = cv.clientHeight || 150;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const cs = getComputedStyle(document.documentElement);
+  const line = cs.getPropertyValue("--line").trim(), acc = cs.getPropertyValue("--dykem").trim(), soft = cs.getPropertyValue("--dykem-soft").trim();
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = line; ctx.lineWidth = 1;
+  for(let g=1; g<4; g++){ const x = W*g/4; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  if(!(Fpk > 0)) return;
+  const n = forces.length, pad = 8;
+  const pt = i => [W*i/(n-1), H - pad - (forces[i]/Fpk)*(H - 2*pad)];
+  ctx.beginPath(); ctx.moveTo(0, H);
+  for(let i=0;i<n;i++){ const [x,y] = pt(i); ctx.lineTo(x,y); }
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fillStyle = soft; ctx.fill();
+  ctx.beginPath();
+  for(let i=0;i<n;i++){ const [x,y] = pt(i); i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); }
+  ctx.strokeStyle = acc; ctx.lineWidth = 2; ctx.stroke();
+}
+
+/* ---------- render ---------- */
+function render(){
+  const p = inputs();
+  if(![p.D,p.ae,p.ap,p.fz,p.vc,p.kc1,p.mc,p.eta,p.E,p.so].every(v => isFinite(v) && v > 0)) return;
+  const r = compute(p);
+  const m = k => metric ? 1 : OUT[k];
+
+  $("o_rpm").textContent  = fmt(r.n, 0);
+  $("o_vf").textContent   = fsig(r.vf*m("feed"), 3);
+  $("o_aepct").textContent = fmt(r.aeR*100, 0) + "%";
+  $("o_angle").textContent = fmt(r.phi*180/Math.PI, 0) + "°";
+  $("o_hmr").textContent  = "×" + fmt(r.hm/(p.fz*Math.sin(p.kappa*Math.PI/180)), 2);
+
+  $("o_pc").textContent   = fsig(r.Pc*m("pow"), 3);
+  $("o_pmot").textContent = fsig(r.Pmot*m("pow"), 3);
+  $("o_tq").textContent   = fsig(r.Mc*m("tq"), 3);
+  $("o_fc").textContent   = fsig(r.Fc*m("force"), 3);
+  $("o_mrr").textContent  = fsig(r.Q*m("mrr"), 3);
+  $("o_hm").textContent   = fsig(r.hm*m("len"), 3);
+  $("o_kc").textContent   = fmt(r.kc, 0);
+  $("o_def").textContent  = fsig(r.def*m("len"), 2);
+  $("o_peak").textContent = fsig(r.Fpeak*m("force"), 3);
+
+  // load gauge, coloured like steel temper colours
+  const L = metric ? LABELS.met : LABELS.imp;
+  const pct = p.pmax > 0 ? r.Pmot/p.pmax*100 : NaN;
+  const fill = $("loadFill");
+  fill.style.width = isFinite(pct) ? Math.min(100, pct) + "%" : "0";
+  fill.style.backgroundColor = pct > 100 ? "var(--blue)" : pct > 80 ? "var(--purple)" : pct > 50 ? "var(--bronze)" : "var(--straw)";
+  $("loadPct").textContent = isFinite(pct) ? fmt(pct, 0) + "% of spindle" : "Set spindle power";
+  $("loadTxt").textContent = `${fsig(r.Pmot*m("pow"),3)} of ${fsig(metric ? p.pmax : p.pmax/C.pow, 3)} ${L.pow}`;
+
+  const warns = [];
+  if(isFinite(p.nmax) && r.n > p.nmax) warns.push(`Needs ${fmt(r.n,0)} rpm, above your ${fmt(p.nmax,0)} rpm limit. Lower the cutting speed or use a larger tool.`);
+  if(pct > 100) warns.push(`Needs ${fmt(pct,0)}% of spindle power. Reduce stepover, depth or feed.`);
+  if(p.ae > p.D) warns.push("Stepover is larger than the tool diameter. Results assume a full slot.");
+  if(r.def > 0.025) warns.push(`Tool deflects about ${fsig(r.def*m("len"),2)} ${L.len}. Expect wall taper; shorten stickout or lighten the cut.`);
+  if(r.hm < 0.005) warns.push("Average chip is very thin, so the edge may rub instead of cutting. Raise feed per tooth.");
+  $("warns").innerHTML = "";
+  if(warns.length){ warns.forEach(w => { const d = document.createElement("div"); d.className = "warn"; d.textContent = w; $("warns").appendChild(d); }); }
+  else { const d = document.createElement("div"); d.className = "ok"; d.textContent = "This cut is within your machine’s limits."; $("warns").appendChild(d); }
+
+  drawViz(p, r);
+  drawGraph(r.forces, r.Fpeak);
+}
+
+/* ---------- wiring ---------- */
+function buildTeeth(){
+  const box = $("teeth");
+  for(let i=1;i<=6;i++){
+    const b = document.createElement("button"); b.type = "button"; b.textContent = i;
+    b.addEventListener("click", () => { $("z").value = i; markTeeth(); render(); save(); });
+    box.appendChild(b);
+  }
+}
+/* ---------- saved setups ---------- */
+const EXAMPLES = [
+  { name:"Sandvik check: 6 mm 4-flute HSM, 6061", s:{ metric:true, mat:"Aluminium (wrought)", kc1:295, mc:0.25, D:6, z:4, helix:35, rake:0, kappa:90,
+      so:18, E:600, eta:0.85, ae:1.67, ap:15, fz:0.0654, vc:452.39, pmax:2.2, nmax:24000 } },
+  { name:"3/8\" 3-flute HSM, 6061", s:{ metric:true, mat:"Aluminium (wrought)", kc1:295, mc:0.25, D:9.525, z:3, helix:45, rake:0, kappa:90,
+      so:31.75, E:600, eta:0.85, ae:0.5, ap:10, fz:0.06, vc:612, pmax:2.2, nmax:24000 } }
+];
+const PKEY = "milling-calc-presets";
+let userPresets = {}, pstore = { kind:"local" }, pwriting = Promise.resolve(), delArmed = null;
+
+function currentSettings(){ const s = { metric, mat:$("mat").value }; FIELDS.forEach(f => s[f] = $(f).value); return s; }
+function applySettings(src){
+  const s = Object.assign({}, DEFAULTS, src);
+  metric = !!s.metric;
+  $("mat").value = MATERIALS[s.mat] ? s.mat : "Custom";
+  FIELDS.forEach(f => $(f).value = s[f]);
+  markTeeth(); setUnitLabels(); syncSliders(); render(); save();
+}
+function setStat(t){ $("pstat").textContent = t; }
+function readLocalPresets(){ try{ const o = JSON.parse(localStorage.getItem(PKEY)); return o && typeof o === "object" ? o : {}; }catch(e){ return {}; } }
+
+function renderPresetList(selected){
+  const sel = $("psel"), keep = selected ?? sel.value;
+  sel.innerHTML = "";
+  const none = document.createElement("option"); none.value = ""; none.textContent = "Choose a setup…"; sel.appendChild(none);
+  const names = Object.keys(userPresets).sort((a,b) => a.localeCompare(b));
+  if(names.length){
+    const g = document.createElement("optgroup"); g.label = "Your setups";
+    names.forEach(n => { const o = document.createElement("option"); o.value = "u:" + n; o.textContent = n; g.appendChild(o); });
+    sel.appendChild(g);
+  }
+  const gx = document.createElement("optgroup"); gx.label = "Examples";
+  EXAMPLES.forEach((x,i) => { const o = document.createElement("option"); o.value = "x:" + i; o.textContent = x.name; gx.appendChild(o); });
+  sel.appendChild(gx);
+  sel.value = [...sel.options].some(o => o.value === keep) ? keep : "";
+  $("pdel").disabled = !sel.value.startsWith("u:");
+}
+
+function persistPresets(){
+  const items = JSON.parse(JSON.stringify(userPresets));
+  pwriting = pwriting.then(async () => {
+    if(pstore.kind === "db"){
+      setStat("Saving…");
+      const write = () => pstore.ref.set({ items, updatedAt: Date.now() });
+      try{ await write(); setStat("Saved to your account"); }
+      catch(e){
+        if(e && e.code === "unavailable"){
+          await new Promise(r => setTimeout(r, 600 + Math.random()*600));
+          try{ await write(); setStat("Saved to your account"); return; }catch(e2){ e = e2; }
+        }
+        setStat(e && e.code === "quota_exceeded" ? "Couldn’t save: storage is full" : "Couldn’t save. Try again.");
+      }
+    } else {
+      try{ localStorage.setItem(PKEY, JSON.stringify(items)); setStat("Saved in this browser"); }
+      catch(e){ setStat("Couldn’t save in this browser"); }
+    }
+  });
+  return pwriting;
+}
+
+function useLocalStore(msg){
+  pstore = { kind:"local" };
+  userPresets = readLocalPresets();
+  renderPresetList();
+  setStat(msg || (Object.keys(userPresets).length ? "Saved in this browser only" : ""));
+}
+
+async function initPresetStore(){
+  let db = null, user = null, uid = null;
+  try{
+    if(window.claude && typeof window.claude.use === "function"){
+      [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      uid = user ? await user.id() : null;
+    }
+  }catch(e){}
+  if(!db || !uid) return;          // stay on browser storage
+  let ref;
+  try{ ref = db.doc("data/users/" + uid + "/presets"); }catch(e){ return; }
+  pstore = { kind:"db", ref };
+  setStat("Loading your setups…");
+  let migrated = false;
+  const timer = setTimeout(() => setStat("Can’t reach your saved setups yet"), 10000);
+  ref.onSnapshot(snap => {
+    const d = snap.exists ? snap.data() : null;
+    userPresets = d && d.items && typeof d.items === "object" ? JSON.parse(JSON.stringify(d.items)) : {};
+    renderPresetList();
+    if(!snap.metadata.fromCache){
+      clearTimeout(timer);
+      if(!migrated){
+        migrated = true;
+        const local = readLocalPresets(), add = Object.keys(local).filter(n => !(n in userPresets));
+        if(add.length){
+          add.forEach(n => userPresets[n] = local[n]);
+          renderPresetList();
+          persistPresets().then(() => { try{ localStorage.removeItem(PKEY); }catch(e){} });
+          return;
+        }
+      }
+      if(!snap.metadata.hasPendingWrites) setStat("Synced to your account");
+    }
+  }, err => {
+    clearTimeout(timer);
+    useLocalStore("Account storage unavailable; saving in this browser");
+  });
+}
+
+function wirePresets(){
+  const sel = $("psel"), name = $("pname"), del = $("pdel");
+  sel.addEventListener("change", () => {
+    const v = sel.value; del.disabled = !v.startsWith("u:");
+    disarmDelete();
+    if(v.startsWith("u:")){ const n = v.slice(2); if(userPresets[n]){ applySettings(userPresets[n]); name.value = n; setStat("Loaded “" + n + "”"); } }
+    else if(v.startsWith("x:")){ const x = EXAMPLES[+v.slice(2)]; if(x){ applySettings(x.s); name.value = ""; setStat("Loaded example"); } }
+  });
+  $("psave").addEventListener("click", () => {
+    const n = name.value.trim();
+    if(!n){ name.focus(); setStat("Name the setup first"); return; }
+    userPresets[n] = currentSettings();
+    renderPresetList("u:" + n);
+    persistPresets();
+  });
+  name.addEventListener("keydown", e => { if(e.key === "Enter") $("psave").click(); });
+  del.addEventListener("click", () => {
+    const v = sel.value; if(!v.startsWith("u:")) return;
+    if(!delArmed){
+      del.textContent = "Confirm delete"; del.classList.add("danger");
+      delArmed = setTimeout(disarmDelete, 4000); return;
+    }
+    disarmDelete();
+    const n = v.slice(2); delete userPresets[n];
+    name.value = ""; renderPresetList(""); persistPresets();
+  });
+}
+function disarmDelete(){ clearTimeout(delArmed); delArmed = null; const d = $("pdel"); d.textContent = "Delete"; d.classList.remove("danger"); }
+
+function markTeeth(){ const z = Math.round(num("z")); [...$("teeth").children].forEach((b,i) => b.setAttribute("aria-pressed", String(i+1 === z))); }
+
+function init(){
+  const s = load();
+  const sel = $("mat");
+  Object.keys(MATERIALS).forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = k; sel.appendChild(o); });
+  sel.value = MATERIALS[s.mat] ? s.mat : DEFAULTS.mat;
+  FIELDS.forEach(f => $(f).value = s[f]);
+  if(sel.value !== "Custom"){ $("kc1").value = MATERIALS[sel.value][0]; $("mc").value = MATERIALS[sel.value][1]; }
+  metric = !!s.metric;
+  buildTeeth(); markTeeth(); setUnitLabels(); syncSliders();
+
+  sel.addEventListener("change", () => {
+    const [kc1, mc] = MATERIALS[sel.value];
+    if(sel.value !== "Custom"){ $("kc1").value = kc1; $("mc").value = mc; }
+    render(); save();
+  });
+  FIELDS.forEach(f => {
+    const e = $(f); if(e.type === "hidden") return;
+    e.addEventListener("input", () => {
+      if((f === "kc1" || f === "mc") && sel.value !== "Custom") sel.value = "Custom";
+      if(f === "D"){ syncSliders(); }
+      else if($(f+"_r")) $(f+"_r").value = e.value;
+      render(); save();
+    });
+  });
+  ["ae","ap","fz","vc"].forEach(k => $(k+"_r").addEventListener("input", e => { $(k).value = sig(e.target.value); render(); save(); }));
+  $("uImp").addEventListener("click", () => setUnits(false));
+  $("uMet").addEventListener("click", () => setUnits(true));
+  window.addEventListener("resize", () => drawGraph(lastForces, lastPeak));
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => drawGraph(lastForces, lastPeak));
+
+  render();
+  useLocalStore(); wirePresets(); initPresetStore();
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
