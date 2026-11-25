@@ -2,7 +2,7 @@
 
 A single-page milling speeds, feeds and cutting-load calculator for side milling, slotting and high-speed (dynamic) toolpaths. It uses Sandvik Coromant's specific-cutting-force model, with wrought aluminium calibrated against Sandvik CoroPlus ToolGuide.
 
-**Live:** https://jayem1427.github.io/djr_cutcalculator/
+**Live:** https://jayem1427.github.io/cutcalculator/
 
 ## Features
 
@@ -11,7 +11,7 @@ A single-page milling speeds, feeds and cutting-load calculator for side milling
 - To-scale top view and cross-section showing stepover (aₑ) and depth of cut (aₚ)
 - Spindle load gauge with warnings for rpm limits, power limits, tool deflection and rubbing chips
 - Exact instantaneous cutting force over one revolution (closed-form integral along the helix), with peak force, force slope (N/° and N/ms) and ripple
-- **Optimize:** picks stepover, depth, feed per tooth and spindle speed for the highest removal rate inside your limits (peak force, force slope, feed, power, chip thickness, cutting speed, depth). Lock stepover or depth to keep it fixed. Limits save as named profiles.
+- **Optimize:** picks stepover, depth, feed per tooth and spindle speed for the highest removal rate inside your limits (peak force, force slope, tool deflection, feed, power, chip thickness, cutting speed, depth). Leave the chip limits blank to use typical values for the material and tool diameter. Lock stepover or depth to keep it fixed. Limits save as named profiles.
 - Stepover × depth map of removal rate, with the failing limit labelled and smooth-stepdown depths drawn. Click a cell to use it.
 - Imperial and metric units
 - Saved setups (stored in your browser), plus built-in example cuts
@@ -34,7 +34,7 @@ A single-page milling speeds, feeds and cutting-load calculator for side milling
 | Force slope (time) | dF/dt = dF/dθ · 6·n / 1000 (N/ms) |
 | Flute pitch | πD / (z·tan β) |
 
-Tool deflection (a cantilever with an equivalent diameter of 0.8·D) is an estimate. The force curve is the exact integral of k<sub>c</sub>·f<sub>z</sub>·sin θ along each helical flute.
+Tool deflection (a cantilever with an equivalent diameter of 0.8·D, at the peak force) is an estimate. A max-deflection limit becomes the peak force it allows at the tool's stickout. The force curve is the exact integral of k<sub>c</sub>·f<sub>z</sub>·sin θ along each helical flute.
 
 ### How the optimizer works
 
@@ -61,7 +61,7 @@ Run the tests with `node --test tests/optimizer.test.js`.
 
 - Adaptive toolpaths go above the nominal engagement in corners. The optimizer uses nominal engagement, so leave margin on the force limit.
 - Forces are tangential only. The resultant force is typically 1.1–1.3× higher.
-- Thicker chips lower k<sub>c</sub>, so with no max chip thickness set, the optimizer tends toward thick chips. Set a max chip thickness for your tool.
+- Thicker chips lower k<sub>c</sub>, so the optimizer tends toward thick chips. The material's typical max chip (for example 0.008 × D in aluminium) caps that by default; type your tool maker's value to override it. The Custom material has no chip data, so set one yourself.
 - Only wrought aluminium (and cast, by scaling) is calibrated to Sandvik.
 
 ### Calibration
