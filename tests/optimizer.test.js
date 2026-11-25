@@ -102,6 +102,20 @@ test("optimizer respects power and chip limits", () => {
   assert.ok(r.best.hex <= 0.05 * (1 + 1e-6));
 });
 
+test("optimizer respects a spindle torque limit (motor torque = Mc / eta)", () => {
+  const L = { nmax: 24000, Tmax: 0.3, eta: 0.85, hexMax: 0.08 };
+  const r = C.optimize(TOOL38, L);
+  assert.ok(r.ok, r.reason);
+  assert.ok(r.best.Mc / 0.85 <= 0.3 * (1 + 1e-6), `torque ${r.best.Mc / 0.85}`);
+  assert.equal(r.best.bind, "torque");
+  assert.equal(C.checkLimits(r.best, L, r.n).length, 0);
+  // A torque limit alone is enough to bound the feed.
+  assert.ok(C.optimize(TOOL38, { nmax: 24000, Tmax: 0.3 }).ok);
+  // checkLimits flags a cut over the torque limit.
+  const over = C.checkLimits(r.best, { Tmax: 0.2, eta: 0.85 }, r.n);
+  assert.deepEqual(over.map(x => x.limit), ["torque"]);
+});
+
 test("an unreachable slope limit gives a clear message, not NaN", () => {
   const r = C.optimize(TOOL38, { nmax: 24000, Fmax: 30, slopeMax: 0.001 });
   assert.equal(r.ok, false);
